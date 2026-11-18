@@ -45,6 +45,15 @@ jobs:
         run: |
           $check = Join-Path $env:RUNNER_TEMP "check"
           Expand-Archive -Path $env:ZIP -DestinationPath $check
+          $app = "$check\VideoMetadataReporter\_internal"
+          if (-not (Test-Path "$app\vendor\mediainfo\MediaInfo.dll")) {
+            Write-Error "The vendored MediaInfo.dll is missing from the build."
+            exit 1
+          }
+          if (Get-ChildItem -Path "$app\pymediainfo" -Filter "*.dll" -ErrorAction SilentlyContinue) {
+            Write-Error "pymediainfo's own MediaInfo.dll is in the build; it should be left out."
+            exit 1
+          }
           $p = Start-Process -FilePath "$check\VideoMetadataReporter\VideoMetadataReporter.exe" -PassThru
           Start-Sleep -Seconds 8
           if ($p.HasExited) {
