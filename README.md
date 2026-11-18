@@ -6,6 +6,8 @@ Video Metadata Reporter uses the [MediaInfo](https://mediaarea.net/en/MediaInfo)
 
 ![platform: Windows](https://img.shields.io/badge/platform-Windows-blue)
 
+![Video Metadata Reporter window](docs/screenshot.png)
+
 ## Quick start (Windows)
 
 1. Download and unzip the release.
