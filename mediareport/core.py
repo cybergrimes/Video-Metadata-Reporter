@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -406,17 +407,70 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     )
 
 
+@dataclass(frozen=True)
+class MediaInfoChoice:
+    """Which MediaInfo library scans use. `library` is passed to pymediainfo as library_file."""
+    library: str | None = None   # vendored DLL path, or None = pymediainfo's own bundled library
+    version: str = ""            # e.g. "26.10"; empty if it couldn't be read
+    warning: str = ""            # set when we had to fall back to the older bundled library
+
+
+_choice: MediaInfoChoice | None = None
+_choice_lock = threading.Lock()
+
+
+def _probe_mediainfo(library_file: str | None) -> tuple[str, str]:
+    """Try to load a MediaInfo library. Returns (version, error); error is empty on success."""
+    from pymediainfo import MediaInfo
+    version = error = ""
+    try:
+        lib, handle, version = MediaInfo._get_library(library_file)[:3]   # private API; version only
+        lib.MediaInfo_Close(handle)
+        lib.MediaInfo_Delete(handle)
+    except Exception as e:  # noqa: BLE001 - any failure means "couldn't load"
+        error = str(e) or type(e).__name__
+    if error and MediaInfo.can_parse(library_file=library_file):
+        error = ""   # the private call changed but the library itself works
+    return version, error
+
+
+def resolve_mediainfo(refresh: bool = False) -> MediaInfoChoice:
+    """Pick the MediaInfo library once per run: the vendored one, else pymediainfo's with a warning."""
+    global _choice
+    with _choice_lock:
+        if _choice is not None and not refresh:
+            return _choice
+        from . import paths
+        dll = paths.vendored_mediainfo()
+        if dll is not None:
+            version, error = _probe_mediainfo(str(dll))
+            if not error:
+                _choice = MediaInfoChoice(str(dll), version)
+                return _choice
+            reason = f"couldn't be loaded ({error})"
+        elif sys.platform == "win32":
+            reason = "is missing"
+        else:
+            reason = ""    # not expected off Windows: pymediainfo's own library is the normal one
+        version, _error = _probe_mediainfo(None)
+        warning = ""
+        if reason:
+            warning = (f"WARNING: the MediaInfo library in vendor/mediainfo {reason}. "
+                       f"Used the older MediaInfo {version or '(unknown version)'} that comes with pymediainfo "
+                       "instead; some values (for example DTS:X channels and a few bitrates) may differ "
+                       "from earlier reports.")
+        _choice = MediaInfoChoice(None, version, warning)
+        return _choice
+
+
 def mediainfo_library() -> str | None:
-    """Path of the vendored MediaInfo library, or None to use pymediainfo's bundled one."""
-    from . import paths
-    dll = paths.vendored_mediainfo()
-    return str(dll) if dll else None
+    """Path of the MediaInfo library to use, or None for pymediainfo's bundled one."""
+    return resolve_mediainfo().library
 
 
 def mediainfo_version() -> str:
-    """Version of the MediaInfo library in use, e.g. '26.10'."""
-    from pymediainfo import MediaInfo
-    return MediaInfo._get_library(library_file=mediainfo_library())[2]
+    """Version of the MediaInfo library in use, e.g. '26.10' (empty if unknown)."""
+    return resolve_mediainfo().version
 
 
 def scan_file(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,

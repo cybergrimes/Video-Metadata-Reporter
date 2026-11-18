@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Sequence
 
-from .core import FileRecord, ScanContext, find_files
+from .core import FileRecord, ScanContext, find_files, resolve_mediainfo
 from .settings import Options
 
 LogFn = Callable[[str], None]
@@ -69,10 +69,13 @@ def run_job(
     from .scanner import scan
 
     start = time.monotonic()
+    late_warning = ""   # printed after the final message so it is the last thing in the log
 
     def finish(status: str, message: str, **kw) -> JobResult:
         res = JobResult(status=status, message=message, seconds=time.monotonic() - start, **kw)
         log(message)
+        if late_warning:
+            log(late_warning)
         return res
 
     folders = [f for f in opts.folders if f.strip()]
@@ -96,6 +99,9 @@ def run_job(
     log(f"Found {len(files)} video file(s). Scanning with {opts.workers} worker(s)...")
 
     if scan_fn is None:
+        choice = resolve_mediainfo()
+        late_warning = choice.warning
+        log(f"Using MediaInfo {choice.version}." if choice.version else "Using MediaInfo.")
         scan_fn = ScanContext(roots).scan_file
     result = scan(files, workers=opts.workers, on_progress=progress,
                   cancel_event=cancel_event, extras_folders=opts.extras_folders,

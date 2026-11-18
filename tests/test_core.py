@@ -387,3 +387,60 @@ class TestCleanWritingApp(unittest.TestCase):
     def test_missing_writing_application_is_blank(self):
         rec = core.record_from_tracks(Path("D:/L/a.mkv"), [NS(track_type="General", format="Matroska")])
         self.assertEqual(rec.writing_app, "")
+
+
+class TestResolveMediaInfo(unittest.TestCase):
+    """Library choice: vendored DLL first, else pymediainfo's own with a warning. No real DLL is loaded."""
+
+    def setUp(self):
+        from unittest import mock
+        self._mock = mock
+        core._choice = None
+        self.addCleanup(setattr, core, "_choice", None)
+
+    def resolve(self, vendored, probe, platform="win32"):
+        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=vendored), \
+                self._mock.patch.object(core, "_probe_mediainfo", side_effect=probe), \
+                self._mock.patch.object(core.sys, "platform", platform):
+            return core.resolve_mediainfo(refresh=True)
+
+    def test_vendored_used_when_it_loads(self):
+        c = self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("26.10", ""))
+        self.assertEqual((c.library, c.version, c.warning), (str(Path("v/MediaInfo.dll")), "26.10", ""))
+
+    def test_load_failure_falls_back_with_warning(self):
+        calls = []
+
+        def probe(lib):
+            calls.append(lib)
+            return ("", "bad image") if lib else ("24.12", "")
+        c = self.resolve(Path("v/MediaInfo.dll"), probe)
+        self.assertIsNone(c.library)
+        self.assertEqual(c.version, "24.12")
+        self.assertTrue(c.warning.startswith("WARNING:"))
+        for part in ("couldn't be loaded", "bad image", "24.12"):
+            self.assertIn(part, c.warning)
+        self.assertEqual(calls, [str(Path("v/MediaInfo.dll")), None])
+
+    def test_missing_dll_falls_back_with_warning(self):
+        c = self.resolve(None, lambda lib: ("24.12", ""))
+        self.assertIsNone(c.library)
+        self.assertIn("is missing", c.warning)
+
+    def test_off_windows_is_not_a_warning(self):
+        c = self.resolve(None, lambda lib: ("24.12", ""), platform="linux")
+        self.assertEqual((c.library, c.warning), (None, ""))
+
+    def test_result_is_cached(self):
+        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=Path("v/M.dll")), \
+                self._mock.patch.object(core, "_probe_mediainfo", return_value=("26.10", "")) as probe:
+            core.resolve_mediainfo(refresh=True)
+            core.resolve_mediainfo()
+            core.mediainfo_library()
+            self.assertEqual(probe.call_count, 1)
+
+    def test_scan_file_passes_the_library(self):
+        core._choice = core.MediaInfoChoice("C:/x/MediaInfo.dll", "26.10")
+        with self._mock.patch("pymediainfo.MediaInfo.parse", return_value=NS(tracks=[])) as parse:
+            core.scan_file(Path("D:/L/a.mkv"))
+        self.assertEqual(parse.call_args.kwargs["library_file"], "C:/x/MediaInfo.dll")
