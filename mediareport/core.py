@@ -18,7 +18,7 @@ DEFAULT_EXTRAS_FOLDERS = ("extras", "featurettes", "scenes")
 
 # Fixed columns, in output order. Audio N columns follow these, then '# Subs', then Sub N.
 BASE_COLUMNS = [
-    "Folder", "File", "Category", "Container", "Encoded date", "Writing application", "Writing library",
+    "Folder", "File", "Category", "Container", "Encoded date", "Writing application",
     "Size (GB)", "Duration (min)",
     "Video codec", "Resolution", "Aspect ratio", "Frame rate", "Bit depth", "Dynamic range",
     "Video bitrate", "# Audio",
@@ -54,7 +54,6 @@ class FileRecord:
     container: str | None = None
     encoded_date: str = ""
     writing_app: str = ""
-    writing_lib: str = ""
     size_gb: float | None = None
     duration_min: int | None = None
     video_codec: str = ""
@@ -74,7 +73,7 @@ class FileRecord:
         """Values for BASE_COLUMNS, in order."""
         return [
             self.folder, self.file, self.category, self.container, self.encoded_date,
-            self.writing_app, self.writing_lib, self.size_gb,
+            self.writing_app, self.size_gb,
             self.duration_min, self.video_codec, self.resolution, self.aspect,
             self.frame_rate, self.bit_depth, self.hdr, self.video_bitrate,
             len(self.audio),
@@ -391,7 +390,6 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
         container=g(gen, "format"),
         encoded_date=date_only(g(gen, "encoded_date")),
         writing_app=clean_writing_app(g(gen, "writing_application")),
-        writing_lib=g(gen, "writing_library") or "",
         size_gb=size_gb,
         duration_min=mins,
         video_codec=(g(v, "format") or "") + (f" ({g(v, 'format_profile')})" if g(v, "format_profile") else ""),

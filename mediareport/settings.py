@@ -111,7 +111,7 @@ max_subs = {max_subs}
 split_tracks = {split_tracks}
 
 ; Columns to leave out of the report (comma-separated; empty = all columns). Folder and File are
-; always written. Names: Category, Container, Encoded date, Writing application, Writing library,
+; always written. Names: Category, Container, Encoded date, Writing application,
 ; Size (GB), Duration (min), Video codec, Resolution, Aspect ratio, Frame rate, Bit depth, Dynamic range,
 ; Video bitrate, Audio (the # Audio and Audio N columns), Subtitles (the # Subs and Sub N columns).
 hidden_columns = {hidden_columns}

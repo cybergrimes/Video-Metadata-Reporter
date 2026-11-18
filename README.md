@@ -24,7 +24,7 @@ Nothing is installed and no console window opens. Progress and errors appear in 
 
 One workbook per scan with a **Library** sheet (one row per video file) and, if any files couldn't be read, an **Errors** sheet.
 
-Columns: `Folder, File, Category, Container, Encoded date, Writing application, Writing library, Size (GB), Duration (min), Video codec, Resolution, Aspect ratio, Frame rate, Bit depth, Dynamic range, Video bitrate, # Audio`, then `Audio 1..N`, then `# Subs`, then `Sub 1..N`.
+Columns: `Folder, File, Category, Container, Encoded date, Writing application, Size (GB), Duration (min), Video codec, Resolution, Aspect ratio, Frame rate, Bit depth, Dynamic range, Video bitrate, # Audio`, then `Audio 1..N`, then `# Subs`, then `Sub 1..N`.
 
 - Audio cell: `English | Dolby TrueHD with Dolby Atmos | 7.1 | 4,000 kb/s | "Title" | Default`
 - Subtitle cell: `English | PGS | "Title" | Forced | Default`
@@ -40,7 +40,7 @@ Columns: `Folder, File, Category, Container, Encoded date, Writing application, 
 |---|---|
 | Save reports to | Where reports go. Default is an `export` folder next to the app. If that isn't writable, reports go to `Documents\Video Metadata Reporter` and the log says so. |
 | Max audio / subtitle columns | Cap the number of `Audio N` / `Sub N` columns. `0` means no cap. The `# Audio` / `# Subs` columns always show the true count. |
-| Choose report fields | Pick which fields (columns) go in the report. Folder and File are always included; every other column (including the audio and subtitle groups) can be switched off. Saved as `hidden_columns` in the ini; `--hide-columns "Writing library,Aspect ratio"` on the command line. |
+| Choose report fields | Pick which fields (columns) go in the report. Folder and File are always included; every other column (including the audio and subtitle groups) can be switched off. Saved as `hidden_columns` in the ini; `--hide-columns "Encoded date,Aspect ratio"` on the command line. |
 | Separate columns | Off: one combined cell per track. On: each detail gets its own column, grouped by track. Audio N: language, codec, channels, bitrate, name, default. Sub N: language, format, name, forced, default. Also `split_tracks` in the ini and `--split-tracks` on the command line. |
 | Files at once | How many files are scanned in parallel. |
 | Extras folder names | Comma-separated folder names treated as non-main content. Videos in them are still scanned but get the folder name in the `Category` column instead of `Main`. If this is left empty, the `Category` column is left out of the report. |
