@@ -17,8 +17,6 @@ Video Metadata Reporter uses the [MediaInfo](https://mediaarea.net/en/MediaInfo)
 
 Nothing is installed and no console window opens. Progress and errors appear in the log pane.
 
-macOS and Linux builds are planned but not available yet. You can run from source on those systems (see below), but this is untested there.
-
 ## What you get
 
 One workbook per scan with a **Library** sheet (one row per video file) and, if any files couldn't be read, an **Errors** sheet.
@@ -87,7 +85,7 @@ py -m venv .venv
 .venv\Scripts\python -m PyInstaller VideoMetadataReporter.spec --noconfirm
 ```
 
-The result is `dist\VideoMetadataReporter\`. Zip that folder to share it.
+The result is `dist\VideoMetadataReporter\`.
 
 ## Layout
 
