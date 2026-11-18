@@ -5,6 +5,7 @@ Nothing in here knows about Excel, threads or the GUI.
 from __future__ import annotations
 
 import os
+import re
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,18 +18,32 @@ DEFAULT_EXTRAS_FOLDERS = ("extras", "featurettes", "scenes")
 
 # Fixed columns, in output order. Audio N columns follow these, then '# Subs', then Sub N.
 BASE_COLUMNS = [
-    "Folder", "File", "Category", "Container", "Size (GB)", "Duration (min)",
-    "Video Codec", "Resolution", "Aspect", "Frame Rate", "Bit Depth", "Dynamic Range",
-    "Video Bitrate", "# Audio",
+    "Folder", "File", "Category", "Container", "Encoded date", "Writing application", "Writing library",
+    "Size (GB)", "Duration (min)",
+    "Video codec", "Resolution", "Aspect ratio", "Frame rate", "Bit depth", "Dynamic range",
+    "Video bitrate", "# Audio",
 ]
 
 SUBS_COUNT_COLUMN = "# Subs"   # sits between the Audio N and Sub N columns
 CATEGORY_COLUMN = "Category"   # Main / Extras / ... ; omitted from reports when no extras folders are defined
 
+# Columns the user can switch off. Folder and File are always written.
+CRITICAL_COLUMNS = ("Folder", "File")
+AUDIO_GROUP = "Audio"          # '# Audio' + every 'Audio N ...' column
+SUBS_GROUP = "Subtitles"       # '# Subs' + every 'Sub N ...' column
+OPTIONAL_COLUMNS = ([c for c in BASE_COLUMNS if c not in CRITICAL_COLUMNS and c != "# Audio"]
+                    + [AUDIO_GROUP, SUBS_GROUP])
+
+
+def normalize_hidden_columns(names: Iterable[str]) -> list[str]:
+    """Match names (any case) to OPTIONAL_COLUMNS, drop unknown ones and duplicates, keep canonical order."""
+    wanted = {n.strip().lower() for n in names}
+    return [c for c in OPTIONAL_COLUMNS if c.lower() in wanted]
+
 # Per-track columns used when tracks are split into separate fields
-# ("Audio 1 Language", "Audio 1 Codec", ...). Order matters.
-AUDIO_FIELDS = ["Language", "Codec", "Channels", "Bitrate", "Name", "Default"]
-SUB_FIELDS = ["Language", "Format", "Name", "Forced", "Default"]
+# ("Audio 1 language", "Audio 1 codec", ...). Order matters.
+AUDIO_FIELDS = ["language", "codec", "channels", "bitrate", "name", "default"]
+SUB_FIELDS = ["language", "format", "name", "forced", "default"]
 
 
 @dataclass
@@ -37,6 +52,9 @@ class FileRecord:
     file: str
     category: str = "Main"
     container: str | None = None
+    encoded_date: str = ""
+    writing_app: str = ""
+    writing_lib: str = ""
     size_gb: float | None = None
     duration_min: int | None = None
     video_codec: str = ""
@@ -55,7 +73,8 @@ class FileRecord:
     def base_values(self) -> list:
         """Values for BASE_COLUMNS, in order."""
         return [
-            self.folder, self.file, self.category, self.container, self.size_gb,
+            self.folder, self.file, self.category, self.container, self.encoded_date,
+            self.writing_app, self.writing_lib, self.size_gb,
             self.duration_min, self.video_codec, self.resolution, self.aspect,
             self.frame_rate, self.bit_depth, self.hdr, self.video_bitrate,
             len(self.audio),
@@ -91,6 +110,13 @@ def find_files(folders: Iterable[str | os.PathLike],
 def parse_extras(text: str) -> list[str]:
     """'Extras, Featurettes' -> ['Extras', 'Featurettes'] (blank entries dropped)."""
     return [e.strip() for e in text.split(",") if e.strip()]
+
+
+def date_only(value) -> str:
+    """'2021-03-14 09:12:33 UTC' -> '2021-03-14'. Unrecognised text is kept as is."""
+    text = str(value or "").strip()
+    m = re.search(r"\d{4}-\d{2}-\d{2}", text)
+    return m.group(0) if m else text
 
 
 def content_type(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,
@@ -350,6 +376,9 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
         file=path.name,
         category=content_type(path, extras_folders, root),
         container=g(gen, "format"),
+        encoded_date=date_only(g(gen, "encoded_date")),
+        writing_app=g(gen, "writing_application") or "",
+        writing_lib=g(gen, "writing_library") or "",
         size_gb=size_gb,
         duration_min=mins,
         video_codec=(g(v, "format") or "") + (f" ({g(v, 'format_profile')})" if g(v, "format_profile") else ""),

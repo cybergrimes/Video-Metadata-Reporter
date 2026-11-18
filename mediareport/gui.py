@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from . import APP_NAME, __version__, settings
-from .core import parse_extras
+from .core import AUDIO_GROUP, OPTIONAL_COLUMNS, SUBS_GROUP, normalize_hidden_columns, parse_extras
 from .folderpicker import ask_directories
 from .job import CANCELLED, DONE, JobResult, run_job
 from .paths import open_path
@@ -39,6 +39,60 @@ def _missing_deps() -> list[str]:
     return missing
 
 
+COLUMN_LABELS = {AUDIO_GROUP: "Audio tracks", SUBS_GROUP: "Subtitle tracks"}
+
+
+class ColumnsDialog(tk.Toplevel):
+    """Modal list of checkboxes, one per optional column. `result` is the new hidden list, or None if cancelled."""
+
+    PER_ROW = 3
+
+    def __init__(self, parent: tk.Misc, hidden: list[str]):
+        super().__init__(parent)
+        self.title("Choose report fields")
+        self.transient(parent)
+        self.resizable(False, False)
+        self.result: list[str] | None = None
+        hidden_set = {h.lower() for h in hidden}
+        self.vars = {c: tk.BooleanVar(value=c.lower() not in hidden_set) for c in OPTIONAL_COLUMNS}
+
+        body = ttk.Frame(self, padding=PAD)
+        body.grid(row=0, column=0)
+        ttk.Label(body, text="Folder and File are always included. Tick the fields you want in the report.",
+                  ).grid(row=0, column=0, columnspan=self.PER_ROW, sticky="w", pady=(0, PAD))
+        for i, col in enumerate(OPTIONAL_COLUMNS):
+            ttk.Checkbutton(body, text=COLUMN_LABELS.get(col, col), variable=self.vars[col],
+                            ).grid(row=1 + i // self.PER_ROW, column=i % self.PER_ROW, sticky="w", padx=(0, 24), pady=2)
+        last = 1 + (len(OPTIONAL_COLUMNS) - 1) // self.PER_ROW
+        ttk.Label(body, text="Category is only written when extras folder names are set.", foreground="gray",
+                  ).grid(row=last + 1, column=0, columnspan=self.PER_ROW, sticky="w", pady=(PAD, 0))
+
+        bar = ttk.Frame(body)
+        bar.grid(row=last + 2, column=0, columnspan=self.PER_ROW, sticky="ew", pady=(PAD, 0))
+        bar.columnconfigure(2, weight=1)
+        ttk.Button(bar, text="Select all", command=lambda: self._set_all(True)).grid(row=0, column=0)
+        ttk.Button(bar, text="Select none", command=lambda: self._set_all(False)).grid(row=0, column=1, padx=(4, 0))
+        ttk.Button(bar, text="OK", command=self._ok).grid(row=0, column=3)
+        ttk.Button(bar, text="Cancel", command=self.destroy).grid(row=0, column=4, padx=(4, 0))
+        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Return>", lambda e: self._ok())
+
+        self.update_idletasks()
+        x = parent.winfo_rootx() + (parent.winfo_width() - self.winfo_width()) // 2
+        y = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 3
+        self.geometry(f"+{max(0, x)}+{max(0, y)}")
+        self.grab_set()
+        self.focus_set()
+
+    def _set_all(self, value: bool) -> None:
+        for v in self.vars.values():
+            v.set(value)
+
+    def _ok(self) -> None:
+        self.result = normalize_hidden_columns(c for c, v in self.vars.items() if not v.get())
+        self.destroy()
+
+
 class App:
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -47,6 +101,7 @@ class App:
         self.worker: threading.Thread | None = None
         self.cancel_event = threading.Event()
         self.last_report: Path | None = None
+        self.hidden_columns: list[str] = []
         self.closing = False     # quit once the cancelled scan stops
         self.closed = False
 
@@ -144,9 +199,16 @@ class App:
         self.var_split = tk.BooleanVar()
         self.chk_split = ttk.Checkbutton(
             of, text="Separate columns for each audio/subtitle detail "
-                     "(Audio 1 Language, Audio 1 Codec, Audio 1 Channels, ...)",
+                     "(Audio 1 language, Audio 1 codec, Audio 1 channels, ...)",
             variable=self.var_split)
         self.chk_split.grid(row=4, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
+
+        cols = ttk.Frame(of)
+        cols.grid(row=5, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
+        self.btn_columns = ttk.Button(cols, text="Choose report fields...", command=self.choose_columns)
+        self.btn_columns.grid(row=0, column=0)
+        self.var_columns = tk.StringVar()
+        ttk.Label(cols, textvariable=self.var_columns, foreground="gray").grid(row=0, column=1, padx=(PAD, 0))
 
         # Run controls
         rf = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
@@ -186,6 +248,22 @@ class App:
         self.var_workers.set(str(o.workers))
         self.var_split.set(o.split_tracks)
         self.var_extras.set(", ".join(o.extras_folders))
+        self.hidden_columns = normalize_hidden_columns(o.hidden_columns)
+        self._update_columns_label()
+
+    def _update_columns_label(self) -> None:
+        total = len(OPTIONAL_COLUMNS)
+        self.var_columns.set(f"{total - len(self.hidden_columns)} of {total} optional fields included")
+
+    def choose_columns(self) -> None:
+        if self.worker:
+            return
+        dlg = ColumnsDialog(self.root, self.hidden_columns)
+        self.root.wait_window(dlg)
+        if dlg.result is not None:
+            self.hidden_columns = dlg.result
+            self._update_columns_label()
+            self._save_settings()
 
     @staticmethod
     def _int(var: tk.StringVar, default: int, lo: int, hi: int) -> int:
@@ -206,6 +284,7 @@ class App:
             max_subs=self._int(self.var_subs, min(o.max_subs, MAX_TRACK_COLS), 0, MAX_TRACK_COLS),
             split_tracks=bool(self.var_split.get()),
             extras_folders=parse_extras(self.var_extras.get()),
+            hidden_columns=list(self.hidden_columns),
             workers=self._int(self.var_workers, min(o.workers, MAX_WORKERS), 1, MAX_WORKERS),
         )
 
@@ -402,7 +481,7 @@ class App:
 
     def _set_running(self, running: bool) -> None:
         on, off = (["disabled"], ["!disabled"]) if running else (["!disabled"], ["disabled"])
-        for w in (self.btn_start, self.btn_add, self.btn_remove, self.btn_clear, self.btn_browse,
+        for w in (self.btn_start, self.btn_add, self.btn_remove, self.btn_clear, self.btn_browse, self.btn_columns,
                   self.ent_export, self.ent_extras, self.chk_split, *self.spinboxes):
             w.state(on)
         self.btn_cancel.state(off)

@@ -11,7 +11,8 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, SUBS_COUNT_COLUMN, CATEGORY_COLUMN, FileRecord, ScanError
+from .core import (AUDIO_FIELDS, AUDIO_GROUP, BASE_COLUMNS, CATEGORY_COLUMN, SUB_FIELDS, SUBS_COUNT_COLUMN,
+                   SUBS_GROUP, FileRecord, ScanError)
 
 HEADER_FILL = "DDEBF7"
 PADDING = 2          # extra width (chars) so text doesn't touch the gridline
@@ -23,7 +24,8 @@ class ExcelOptions:
     max_audio: int = 0   # 0 = as many Audio columns as needed
     max_subs: int = 0    # 0 = as many Sub columns as needed
     include_category: bool = True    # False = leave out the "Category" column (no extras folders defined)
-    split_tracks: bool = False   # True = "Audio 1 Language", "Audio 1 Codec", ... instead of one mixed cell
+    hidden_columns: frozenset = frozenset()   # OPTIONAL_COLUMNS names left out of the report (Folder/File can't be)
+    split_tracks: bool = False   # True = "Audio 1 language", "Audio 1 codec", ... instead of one mixed cell
 
 
 def track_column_counts(records: Sequence[FileRecord], opts: ExcelOptions) -> tuple[int, int]:
@@ -39,16 +41,27 @@ def track_column_counts(records: Sequence[FileRecord], opts: ExcelOptions) -> tu
 def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
                    opts: ExcelOptions | None = None) -> Workbook:
     opts = opts or ExcelOptions()
+    hidden = {h.lower() for h in opts.hidden_columns}
+    show_audio, show_subs = AUDIO_GROUP.lower() not in hidden, SUBS_GROUP.lower() not in hidden
     n_aud, n_sub = track_column_counts(records, opts)
-    base = BASE_COLUMNS if opts.include_category else [c for c in BASE_COLUMNS if c != CATEGORY_COLUMN]
+    n_aud, n_sub = n_aud if show_audio else 0, n_sub if show_subs else 0
+
+    def wanted(col: str) -> bool:
+        if col == CATEGORY_COLUMN and not opts.include_category:
+            return False
+        if col == "# Audio":
+            return show_audio
+        return col == "Folder" or col == "File" or col.lower() not in hidden
+
+    keep = [wanted(c) for c in BASE_COLUMNS]
+    base = [c for c, k in zip(BASE_COLUMNS, keep) if k]
     if opts.split_tracks:
-        headers = (base
-                   + [f"Audio {i} {f}" for i in range(1, n_aud + 1) for f in AUDIO_FIELDS]
-                   + [SUBS_COUNT_COLUMN]
-                   + [f"Sub {i} {f}" for i in range(1, n_sub + 1) for f in SUB_FIELDS])
+        audio_headers = [f"Audio {i} {f}" for i in range(1, n_aud + 1) for f in AUDIO_FIELDS]
+        sub_headers = [f"Sub {i} {f}" for i in range(1, n_sub + 1) for f in SUB_FIELDS]
     else:
-        headers = (base + [f"Audio {i}" for i in range(1, n_aud + 1)]
-                   + [SUBS_COUNT_COLUMN] + [f"Sub {i}" for i in range(1, n_sub + 1)])
+        audio_headers = [f"Audio {i}" for i in range(1, n_aud + 1)]
+        sub_headers = [f"Sub {i}" for i in range(1, n_sub + 1)]
+    headers = base + audio_headers + ([SUBS_COUNT_COLUMN] if show_subs else []) + sub_headers
 
     wb = Workbook()
     ws = wb.active
@@ -61,10 +74,8 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
         else:
             audio = (r.audio + [""] * n_aud)[:n_aud]
             subs = (r.subs + [""] * n_sub)[:n_sub]
-        values = r.base_values()
-        if not opts.include_category:
-            del values[BASE_COLUMNS.index(CATEGORY_COLUMN)]
-        ws.append([_clean(v) for v in values + audio + [len(r.subs)] + subs])
+        values = [v for v, k in zip(r.base_values(), keep) if k]
+        ws.append([_clean(v) for v in values + audio + ([len(r.subs)] if show_subs else []) + subs])
     _force_text(ws)
 
     # Formatting: bold header, freeze panes, filters, sensible widths

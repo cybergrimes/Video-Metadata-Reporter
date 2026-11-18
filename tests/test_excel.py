@@ -74,7 +74,7 @@ class TestIncludeCategory(unittest.TestCase):
         r.category = "Extras"
         ws = excel.build_workbook([r], [], excel.ExcelOptions(include_category=False))["Library"]
         out = rows(ws)
-        self.assertEqual(out[0][:4], ["Folder", "File", "Container", "Size (GB)"])
+        self.assertEqual(out[0][:4], ["Folder", "File", "Container", "Encoded date"])
         self.assertNotIn("Category", out[0])
         self.assertEqual(len(out[0]), len(BASE_COLUMNS) - 1 + 1 + 1)
         self.assertEqual(out[1][:3], ["D:/x", "a", None])      # Container is None for this fake record
@@ -140,7 +140,7 @@ class TestAutofit(unittest.TestCase):
 
     def test_header_gets_room_for_filter_button(self):
         ws = excel.build_workbook([rec("a", 0, 0)], [])["Library"]
-        self.assertEqual(self.width(ws, "Dynamic Range"), len("Dynamic Range") + excel.FILTER_BUTTON + excel.PADDING)
+        self.assertEqual(self.width(ws, "Dynamic range"), len("Dynamic range") + excel.FILTER_BUTTON + excel.PADDING)
 
     def test_all_rows_measured(self):
         recs = [rec(f"f{i}", 0, 0) for i in range(600)]

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from .core import DEFAULT_EXTRAS_FOLDERS, parse_extras
+from .core import DEFAULT_EXTRAS_FOLDERS, normalize_hidden_columns, parse_extras
 from .paths import app_dir, is_writable_dir, resolve_export_dir, user_config_dir
 
 INI_NAME = "MediaReport.ini"
@@ -28,6 +28,7 @@ class Options:
     split_tracks: bool = False
     extras_folders: list[str] = field(default_factory=lambda: list(DEFAULT_EXTRAS_FOLDERS))
     workers: int = 4
+    hidden_columns: list[str] = field(default_factory=list)   # OPTIONAL_COLUMNS left out of the report
 
     def export_dir(self) -> tuple[Path, str | None]:
         """(folder to write reports to, note if we had to fall back)."""
@@ -80,6 +81,8 @@ def load(path: Path | None = None) -> Options:
     except ValueError:
         pass
     opts.workers = min(MAX_WORKERS, _int(cp, "workers", opts.workers, minimum=1))
+    if "hidden_columns" in s:
+        opts.hidden_columns = normalize_hidden_columns(s["hidden_columns"].split(","))
     if "extras_folders" in s:
         opts.extras_folders = parse_extras(s["extras_folders"])
     return opts
@@ -103,9 +106,15 @@ export_folder = {export_folder}
 max_audio = {max_audio}
 max_subs = {max_subs}
 
-; Put each audio/subtitle detail in its own column (Audio 1 Language, Audio 1 Codec, ...)
+; Put each audio/subtitle detail in its own column (Audio 1 language, Audio 1 codec, ...)
 ; instead of one combined cell per track. yes or no.
 split_tracks = {split_tracks}
+
+; Columns to leave out of the report (comma-separated; empty = all columns). Folder and File are
+; always written. Names: Category, Container, Encoded date, Writing application, Writing library,
+; Size (GB), Duration (min), Video codec, Resolution, Aspect ratio, Frame rate, Bit depth, Dynamic range,
+; Video bitrate, Audio (the # Audio and Audio N columns), Subtitles (the # Subs and Sub N columns).
+hidden_columns = {hidden_columns}
 
 ; Folder names (comma-separated, any case) that mark bonus content in the Category column.
 extras_folders = {extras_folders}
@@ -124,6 +133,7 @@ def render(opts: Options) -> str:
         max_audio=max(0, opts.max_audio),
         max_subs=max(0, opts.max_subs),
         split_tracks="yes" if opts.split_tracks else "no",
+        hidden_columns=", ".join(normalize_hidden_columns(opts.hidden_columns)),
         extras_folders=", ".join(opts.extras_folders),
         workers=max(1, opts.workers),
     )

@@ -113,6 +113,7 @@ def run_job(
         out = write_workbook(result.records, result.errors, path,
                              ExcelOptions(max_audio=opts.max_audio, max_subs=opts.max_subs,
                                          split_tracks=opts.split_tracks,
+                                         hidden_columns=frozenset(opts.hidden_columns),
                                          include_category=bool(opts.extras_folders)))
     except OSError as e:
         return finish(FAILED, f"Couldn't save the report to {path}: {e}", files=len(files),
