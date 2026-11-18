@@ -70,25 +70,44 @@ class App:
         root.columnconfigure(0, weight=1)
         root.rowconfigure(3, weight=1)
 
-        # Folders
-        ff = ttk.LabelFrame(root, text="Folders to scan", padding=PAD)
+        # Scan: what to read
+        ff = ttk.LabelFrame(root, text="Scan", padding=PAD)
         ff.grid(row=0, column=0, sticky="nsew", padx=PAD, pady=(PAD, 0))
-        ff.columnconfigure(0, weight=1)
+        ff.columnconfigure(1, weight=1)
         self.folder_list = tk.Listbox(ff, height=5, selectmode="extended", activestyle="none")
-        self.folder_list.grid(row=0, column=0, rowspan=3, sticky="nsew")
+        self.folder_list.grid(row=0, column=0, rowspan=3, columnspan=2, sticky="nsew")
         sb = ttk.Scrollbar(ff, orient="vertical", command=self.folder_list.yview)
-        sb.grid(row=0, column=1, rowspan=3, sticky="ns")
+        sb.grid(row=0, column=2, rowspan=3, sticky="ns")
         self.folder_list.configure(yscrollcommand=sb.set)
         self.btn_add = ttk.Button(ff, text="Add", command=self.add_folder)
-        self.btn_add.grid(row=0, column=2, sticky="ew", padx=(PAD, 0))
+        self.btn_add.grid(row=0, column=3, sticky="ew", padx=(PAD, 0))
         self.btn_remove = ttk.Button(ff, text="Remove", command=self.remove_folders)
-        self.btn_remove.grid(row=1, column=2, sticky="ew", padx=(PAD, 0), pady=(4, 0))
+        self.btn_remove.grid(row=1, column=3, sticky="ew", padx=(PAD, 0), pady=(4, 0))
         self.btn_clear = ttk.Button(ff, text="Clear", command=self.clear_folders)
-        self.btn_clear.grid(row=2, column=2, sticky="ew", padx=(PAD, 0), pady=(4, 0))
+        self.btn_clear.grid(row=2, column=3, sticky="ew", padx=(PAD, 0), pady=(4, 0))
         self.folder_list.bind("<Delete>", lambda e: self.remove_folders())
 
-        # Options
-        of = ttk.LabelFrame(root, text="Options", padding=PAD)
+        ttk.Label(ff, text="Extras folder names:").grid(row=3, column=0, sticky="w", pady=(PAD, 0))
+        self.var_extras = tk.StringVar()
+        self.ent_extras = ttk.Entry(ff, textvariable=self.var_extras)
+        self.ent_extras.grid(row=3, column=1, columnspan=3, sticky="ew", padx=(PAD, 0), pady=(PAD, 0))
+        ttk.Label(ff, text="Separate names with commas. Videos in these folders are still scanned, but get the "
+                           "folder name in the Type column instead of 'Main'. Leave empty to omit the Type column.",
+                  foreground="gray", wraplength=470, justify="left",
+                  ).grid(row=4, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
+
+        ttk.Label(ff, text="Files at once:").grid(row=5, column=0, sticky="w", pady=(PAD, 0))
+        self.var_workers = tk.StringVar()
+        workers = ttk.Frame(ff)
+        workers.grid(row=5, column=1, columnspan=3, sticky="w", padx=(PAD, 0), pady=(PAD, 0))
+        sp = ttk.Spinbox(workers, from_=1, to=MAX_WORKERS, width=4, textvariable=self.var_workers)
+        sp.grid(row=0, column=0)
+        ttk.Label(workers, text="Parallel reads. Lower for slow drives.", foreground="gray",
+                  ).grid(row=0, column=1, padx=(PAD, 0))
+        self.spinboxes = [sp]
+
+        # Report: what the workbook looks like
+        of = ttk.LabelFrame(root, text="Report", padding=PAD)
         of.grid(row=1, column=0, sticky="ew", padx=PAD, pady=(PAD, 0))
         of.columnconfigure(1, weight=1)
 
@@ -106,35 +125,23 @@ class App:
         nums.grid(row=2, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
         self.var_audio = tk.StringVar()
         self.var_subs = tk.StringVar()
-        self.var_workers = tk.StringVar()
-        self.spinboxes = []
-        for col, (label, var, lo, hi) in enumerate([
-            ("Max audio columns", self.var_audio, 0, MAX_TRACK_COLS),
-            ("Max subtitle columns", self.var_subs, 0, MAX_TRACK_COLS),
-            ("Files at once", self.var_workers, 1, MAX_WORKERS),
+        for col, (label, var) in enumerate([
+            ("Max audio columns", self.var_audio),
+            ("Max subtitle columns", self.var_subs),
         ]):
             ttk.Label(nums, text=label).grid(row=0, column=col * 2, sticky="w", padx=(0 if col == 0 else 16, 4))
-            sp = ttk.Spinbox(nums, from_=lo, to=hi, width=4, textvariable=var)
+            sp = ttk.Spinbox(nums, from_=0, to=MAX_TRACK_COLS, width=4, textvariable=var)
             sp.grid(row=0, column=col * 2 + 1, sticky="w")
             self.spinboxes.append(sp)
         ttk.Label(of, text="Tracks beyond the maximum are left out of the report (0 = no maximum).",
                   foreground="gray").grid(row=3, column=0, columnspan=4, sticky="w")
-
-        ttk.Label(of, text="Extras folder names:").grid(row=4, column=0, sticky="w", pady=(PAD, 0))
-        self.var_extras = tk.StringVar()
-        self.ent_extras = ttk.Entry(of, textvariable=self.var_extras)
-        self.ent_extras.grid(row=4, column=1, columnspan=3, sticky="ew", padx=(PAD, 0), pady=(PAD, 0))
-        ttk.Label(of, text="Separate names with commas. Videos in these folders are still scanned, but get the "
-                       "folder name in the Type column instead of 'Main'. Leave empty to omit the Type column.",
-                  foreground="gray", wraplength=470, justify="left",
-                  ).grid(row=5, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
 
         self.var_split = tk.BooleanVar()
         self.chk_split = ttk.Checkbutton(
             of, text="Separate columns for each audio/subtitle detail "
                      "(Audio 1 Language, Audio 1 Type, Audio 1 Channels, ...)",
             variable=self.var_split)
-        self.chk_split.grid(row=6, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
+        self.chk_split.grid(row=4, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
 
         # Run controls
         rf = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
