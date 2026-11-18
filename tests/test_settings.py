@@ -36,9 +36,7 @@ class TestSettings(unittest.TestCase):
     def test_loads_from_old_config_folder(self):
         old_dir = self.dir / "MediaReport"
         old_dir.mkdir()
-        (old_dir / "MediaReport.ini").write_text("[Media Report]
-max_subs = 4
-", encoding="utf-8")
+        (old_dir / "MediaReport.ini").write_text("[Media Report]\nmax_subs = 4\n", encoding="utf-8")
         new_dir = self.dir / "VideoMetadataReporter"
         new_dir.mkdir()
         self.assertEqual(settings.load(new_dir / "settings.ini").max_subs, 4)
