@@ -141,7 +141,7 @@ def content_type(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLD
 
 # --------------------------------------------------------------------------- track helpers
 
-_APP_VERSION = re.compile(r"^(.+?)\s+v?(\d+(?:\.\d+)*)(?=\s|$)")
+_APP_VERSION = re.compile(r"^(.+?)\s+v?(\d+(?:\.\d+)*(?:-[\w.]+)?)(?=\s|$)")   # version may carry -beta1, -rc2
 
 
 def clean_writing_app(text) -> str:

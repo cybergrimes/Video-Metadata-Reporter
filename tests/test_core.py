@@ -310,3 +310,80 @@ class TestCleanWritingApp(unittest.TestCase):
         self.assertEqual(core.clean_writing_app("Lavf58.76.100"), "Lavf58.76.100")
         self.assertEqual(core.clean_writing_app("  Some Tool  "), "Some Tool")
         self.assertEqual(core.clean_writing_app(None), "")
+
+    # Strings seen in a real 185-file MKV library (MediaInfo 24.12 and 26.10 report them identically).
+    REAL = {
+        "MakeMKV v1.14.2 win(x64-release)": "MakeMKV 1.14.2",
+        "MakeMKV v1.15.0 win(x64-release)": "MakeMKV 1.15.0",
+        "MakeMKV v1.18.3 win(x64-release)": "MakeMKV 1.18.3",
+        "MakeMKV v2.0.0 win(x64-release)": "MakeMKV 2.0.0",
+        "mkvmerge v43.0.0 ('The Quartermaster') 64-bit": "mkvmerge 43.0.0",
+        "mkvmerge v51.0.0 ('I Wish') 64-bit": "mkvmerge 51.0.0",
+        "mkvmerge v63.0.0 ('Everything') 64-bit": "mkvmerge 63.0.0",
+        "mkvmerge v79.0 ('Funeral Pyres') 64-bit": "mkvmerge 79.0",
+        "mkvmerge v88.0 ('All I Know') 64-bit": "mkvmerge 88.0",
+        "mkvmerge v96.0 ('It's My Life') 64-bit": "mkvmerge 96.0",
+        "mkvmerge v97.0 ('You Don't Have A Clue') 64-bit": "mkvmerge 97.0",
+        "mkvmerge v99.0 ('Buka') 64-bit": "mkvmerge 99.0",
+    }
+
+    # Other common writers, and awkward shapes.
+    OTHER = {
+        "mkvmerge v8.2.0 ('World of Adventure') 64bit built on Jun 12 2015 11:26:22": "mkvmerge 8.2.0",
+        "mkvmerge v81.0-beta1 ('x') 64-bit": "mkvmerge 81.0-beta1",
+        "MKVToolNix 20.0.0": "MKVToolNix 20.0.0",
+        "HandBrake 1.6.1 2023010900": "HandBrake 1.6.1",
+        "HandBrake 0.10.2 2015060900": "HandBrake 0.10.2",
+        "Adobe Premiere Pro 2020.0 (Windows)": "Adobe Premiere Pro 2020.0",
+        "Adobe Media Encoder 2020 (Windows)": "Adobe Media Encoder 2020",
+        "VirtualDub 1.10.4 (build 35491/release)": "VirtualDub 1.10.4",
+        "Shutter Encoder 17.1 - FFmpeg": "Shutter Encoder 17.1",
+        "MakeMKV v1.17.7 linux(x64-release)": "MakeMKV 1.17.7",
+        "mkvmerge  v97.0  ('x')": "mkvmerge 97.0",          # extra spaces
+        "Name v1": "Name 1",
+        # No separate version token: left as MediaInfo reported it.
+        "Lavf58.76.100": "Lavf58.76.100",
+        "ffmpeg": "ffmpeg",
+        "Apple QuickTime": "Apple QuickTime",
+        "v1.2.3": "v1.2.3",
+        "1.2.3": "1.2.3",
+        "": "",
+        "   ": "",
+    }
+
+    def test_real_library_strings(self):
+        for raw, want in self.REAL.items():
+            self.assertEqual(core.clean_writing_app(raw), want, raw)
+
+    def test_other_writers_and_edge_shapes(self):
+        for raw, want in self.OTHER.items():
+            self.assertEqual(core.clean_writing_app(raw), want, raw)
+
+    def test_idempotent(self):
+        for raw in list(self.REAL) + list(self.OTHER):
+            once = core.clean_writing_app(raw)
+            self.assertEqual(core.clean_writing_app(once), once, raw)
+
+    def test_never_raises_on_odd_input(self):
+        import random
+        import string
+        rng = random.Random(1)
+        alphabet = string.ascii_letters + string.digits + " .-_()'/+v\t\u00e9\u4e2d"
+        for _ in range(20000):
+            raw = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
+            once = core.clean_writing_app(raw)
+            self.assertIsInstance(once, str)
+            self.assertEqual(core.clean_writing_app(once), once, raw)
+
+    def test_ends_up_in_the_report_cell(self):
+        from mediareport import excel
+        gen = NS(track_type="General", format="Matroska",
+                 writing_application="mkvmerge v97.0 ('You Don't Have A Clue') 64-bit")
+        rec = core.record_from_tracks(Path("D:/L/a.mkv"), [gen])
+        ws = excel.build_workbook([rec], [], excel.ExcelOptions())["Library"]
+        hdr = [c.value for c in ws[1]]
+        self.assertEqual(ws[2][hdr.index("Writing application")].value, "mkvmerge 97.0")
+
+    def test_missing_writing_application_is_blank(self):
+        rec = core.record_from_tracks(Path("D:/L/a.mkv"), [NS(track_type="General", format="Matroska")])
+        self.assertEqual(rec.writing_app, "")
