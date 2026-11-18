@@ -19,15 +19,14 @@ from . import APP_NAME, __version__, settings
 from .core import (AUDIO_GROUP, OPTIONAL_COLUMNS, SUBS_GROUP, MediaInfoUnavailable, normalize_hidden_columns,
                    parse_extras, resolve_mediainfo)
 from .folderpicker import ask_directories
-from .job import CANCELLED, DONE, JobResult, run_job
+from .job import CANCELLED, DONE, FAILED, JobResult, run_job
 from .paths import open_path
-from .settings import Options
+from .settings import MAX_WORKERS, Options
 
 POLL_MS = 100
 MAX_LOG_LINES = 5000     # oldest lines are trimmed beyond this
 PAD = 8
 MAX_TRACK_COLS = 99
-MAX_WORKERS = 32
 
 
 def _missing_deps() -> list[str]:
@@ -358,12 +357,12 @@ class App:
                                  + "\n\nInstall with:\npy -m pip install " + " ".join(missing),
                                  parent=self.root)
             return
+        self._save_settings()
         try:
             resolve_mediainfo()
         except MediaInfoUnavailable as e:
             messagebox.showerror(APP_NAME, str(e), parent=self.root)
             return
-        self._save_settings()
         if not self.opts.folders:
             messagebox.showinfo(APP_NAME, "Add at least one folder to scan.", parent=self.root)
             return
@@ -389,7 +388,7 @@ class App:
                               cancel_event=cancel)
             except Exception:
                 q.put(("log_error", traceback.format_exc().rstrip()))
-                res = JobResult(status="failed", message="The scan failed unexpectedly.")
+                res = JobResult(status=FAILED, message="The scan failed unexpectedly.")
             q.put(("finished", res))
 
         self.worker = threading.Thread(target=work, name="scan", daemon=True)

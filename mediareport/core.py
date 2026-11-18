@@ -175,7 +175,7 @@ def channels(track) -> str:
         return ""
     layout = (g(track, "channel_layout") or "").upper()
     lfe = 1 if "LFE" in layout else 0
-    if ch >= 3 and not lfe and ch in (6, 8):  # layout missing; assume .1
+    if not lfe and ch in (6, 8):  # layout missing; assume .1
         lfe = 1
     return f"{ch - lfe}.{lfe}"
 
@@ -485,9 +485,6 @@ def mediainfo_library() -> str | None:
     return resolve_mediainfo().library
 
 
-def mediainfo_version() -> str:
-    """Version of the MediaInfo library in use, e.g. '26.10' (empty if unknown)."""
-    return resolve_mediainfo().version
 
 
 def scan_file(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,

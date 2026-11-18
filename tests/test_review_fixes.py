@@ -45,9 +45,6 @@ class TestMisc(unittest.TestCase):
             self.assertEqual(settings.load(p).workers, settings.MAX_WORKERS)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestRenamedColumns(unittest.TestCase):
     def test_category_and_split_headers(self):
@@ -139,3 +136,7 @@ class TestNewColumnsAndSelection(unittest.TestCase):
         import contextlib, io
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             cli.main(["D:/x", "--hide-columns", "Bogus"])
+
+
+if __name__ == "__main__":
+    unittest.main()

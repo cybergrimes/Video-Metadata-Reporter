@@ -1,4 +1,4 @@
-"""Command-line front-end (same flags as the original script)."""
+"""Command-line front-end."""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .core import DEFAULT_EXTRAS_FOLDERS, OPTIONAL_COLUMNS, normalize_hidden_columns, parse_extras
 from .job import DONE, run_job
-from .settings import Options
+from .settings import MAX_WORKERS, Options
 
 USAGE = """\
 Scan folders of movie/TV rips and write an Excel report with one row per file
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hide-columns", default="",
                     help="Comma-separated columns to leave out (Folder and File are always kept). "
                          "Choices: " + ", ".join(OPTIONAL_COLUMNS))
-    ap.add_argument("--workers", type=int, default=4, choices=range(1, 33), metavar="1-32", help="Files to read in parallel (default 4)")
+    ap.add_argument("--workers", type=int, default=4, choices=range(1, MAX_WORKERS + 1), metavar=f"1-{MAX_WORKERS}", help="Files to read in parallel (default 4)")
     ap.add_argument("--extras", default=",".join(DEFAULT_EXTRAS_FOLDERS),
                     help="Comma-separated folder names that mark bonus content (default: %(default)s)")
     args = ap.parse_args(argv)

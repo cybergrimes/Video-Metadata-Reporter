@@ -11,9 +11,10 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable
 
 from .core import FileRecord, MediaInfoUnavailable, ScanContext, find_files, resolve_mediainfo
+from .scanner import scan
 from .settings import Options
 
 LogFn = Callable[[str], None]
@@ -33,7 +34,6 @@ class JobResult:
     files: int = 0              # video files found
     records: int = 0            # rows written
     errors: int = 0             # unreadable files (Errors sheet)
-    seconds: float = 0.0
     message: str = ""           # one-line summary for the user
 
 
@@ -55,7 +55,6 @@ def run_job(
     cancel_event: threading.Event,
     *,
     now: datetime | None = None,
-    find_fn: Callable[..., Sequence[Path]] = find_files,
     scan_fn: Callable[[Path, object], FileRecord] | None = None,
     output: Path | None = None,
 ) -> JobResult:
@@ -67,12 +66,11 @@ def run_job(
     """
     # Imported here so a missing openpyxl is reported in the log, not at import time.
     from .excel import ExcelOptions, unique_path, write_workbook
-    from .scanner import scan
 
     start = time.monotonic()
 
     def finish(status: str, message: str, **kw) -> JobResult:
-        res = JobResult(status=status, message=message, seconds=time.monotonic() - start, **kw)
+        res = JobResult(status=status, message=message, **kw)
         log(message)
         return res
 
@@ -95,8 +93,7 @@ def run_job(
     def walk_error(e: OSError) -> None:
         log(f"Couldn't read folder {getattr(e, 'filename', None) or ''}: {e.strerror or e}")
 
-    kwargs = {"on_error": walk_error} if find_fn is find_files else {}
-    files = list(find_fn(roots, should_stop=cancel_event.is_set, **kwargs))
+    files = list(find_files(roots, should_stop=cancel_event.is_set, on_error=walk_error))
     if cancel_event.is_set():
         return finish(CANCELLED, "Cancelled. No report was written.", files=len(files))
     if not files:
@@ -109,7 +106,7 @@ def run_job(
     result = scan(files, workers=opts.workers, on_progress=progress,
                   cancel_event=cancel_event, extras_folders=opts.extras_folders,
                   scan_fn=scan_fn)
-    if result.cancelled or cancel_event.is_set():
+    if cancel_event.is_set():
         return finish(CANCELLED, "Cancelled. No report was written.", files=len(files))
 
     if output is None:

@@ -17,7 +17,6 @@ ProgressFn = Callable[[int, int, Path, "str | None"], None]
 class ScanResult:
     records: list[FileRecord] = field(default_factory=list)   # in input order
     errors: list[ScanError] = field(default_factory=list)     # in input order
-    cancelled: bool = False
 
 
 def scan(
@@ -31,7 +30,7 @@ def scan(
     """Scan files; results keep input order. on_progress is called on the calling thread.
 
     If cancel_event is set, pending files are dropped, in-flight ones finish,
-    and the result has cancelled=True.
+    and the caller checks cancel_event.
     """
     extras = tuple(extras_folders)
     total = len(files)
@@ -68,7 +67,7 @@ def scan(
                     on_progress(done_count, total, files[i], err)
             fill()
 
-    result = ScanResult(cancelled=cancel_event.is_set() and done_count < total)
+    result = ScanResult()
     for s in slots:
         if isinstance(s, FileRecord):
             result.records.append(s)

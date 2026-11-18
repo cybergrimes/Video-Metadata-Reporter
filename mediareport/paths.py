@@ -35,7 +35,7 @@ def vendored_mediainfo_dir() -> Path:
 
 
 def vendored_mediainfo() -> Path | None:
-    """The MediaInfo.dll shipped in vendor/mediainfo, or None (pymediainfo's bundled copy is used then)."""
+    """The MediaInfo.dll shipped in vendor/mediainfo, or None if it is missing or the OS isn't Windows."""
     if sys.platform != "win32":
         return None
     dll = vendored_mediainfo_dir() / "MediaInfo.dll"

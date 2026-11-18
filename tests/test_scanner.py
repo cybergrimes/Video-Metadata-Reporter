@@ -21,7 +21,6 @@ class TestScan(unittest.TestCase):
             return rec(p)
         res = scanner.scan(files, workers=4, scan_fn=fn)
         self.assertEqual([r.file for r in res.records], [f.name for f in files])
-        self.assertFalse(res.cancelled)
 
     def test_errors(self):
         files = [Path("a.mkv"), Path("bad.mkv"), Path("c.mkv"), Path("empty.mkv")]
@@ -69,13 +68,12 @@ class TestScan(unittest.TestCase):
             if d >= 3:
                 ev.set()
         res = scanner.scan(files, workers=2, scan_fn=fn, on_progress=prog, cancel_event=ev)
-        self.assertTrue(res.cancelled)
         self.assertLess(len(res.records), len(files))
         self.assertGreaterEqual(len(res.records), 3)
 
     def test_empty(self):
         res = scanner.scan([], scan_fn=lambda p, e: rec(p))
-        self.assertEqual((res.records, res.errors, res.cancelled), ([], [], False))
+        self.assertEqual((res.records, res.errors), ([], []))
 
     def test_extras_passed(self):
         seen = []
