@@ -94,9 +94,11 @@ class App:
         self.var_extras = tk.StringVar()
         self.ent_extras = ttk.Entry(ff, textvariable=self.var_extras)
         self.ent_extras.grid(row=3, column=1, columnspan=3, sticky="ew", padx=(PAD, 0), pady=(PAD, 0))
-        ttk.Label(ff, text="Separate names with commas. Videos in these folders are still scanned, but get the "
-                           "folder name in the Category column instead of 'Main'. Leave empty to omit the Category column.",
-                  foreground="gray", wraplength=470, justify="left",
+        # Explicit line breaks (no wraplength) so no single word ever drops onto its own line.
+        ttk.Label(ff, text="Separate names with commas. Videos in these folders are still scanned.\n"
+                           "They get the folder name in the Category column instead of 'Main'.\n"
+                           "Leave empty to omit the Category column.",
+                  foreground="gray", justify="left",
                   ).grid(row=4, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
 
         ttk.Label(ff, text="Files at once:").grid(row=5, column=0, sticky="w", pady=(PAD, 0))
