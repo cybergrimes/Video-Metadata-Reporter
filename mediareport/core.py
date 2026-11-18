@@ -166,8 +166,18 @@ def sub_fields(t) -> list[str]:
     ]
 
 
+EXTERNAL = " (external)"
+
+
 def describe_sub(t) -> str:
-    lang_, fmt, title, forced, default = sub_fields(t)
+    return describe_sub_fields(sub_fields(t))
+
+
+def describe_sub_fields(fields: list[str]) -> str:
+    """The combined 'English | PGS | "Title" | Forced | Default' cell from SUB_FIELDS values."""
+    lang_, fmt, title, forced, default = fields
+    external = fmt.endswith(EXTERNAL)
+    fmt = fmt[:-len(EXTERNAL)] if external else fmt
     parts = [lang_, fmt]
     if title:
         parts.append(f'"{title}"')
@@ -175,7 +185,74 @@ def describe_sub(t) -> str:
         parts.append(forced)
     if default:
         parts.append(default)
+    if external:
+        parts.append("External")
     return " | ".join(p for p in parts if p)
+
+
+# --------------------------------------------------------------------------- sidecar subtitles
+
+# Subtitle files that sit next to a video: extension -> format name.
+SIDECAR_FORMATS = {".srt": "SRT", ".ass": "ASS", ".ssa": "SSA", ".vtt": "WebVTT",
+                   ".sub": "SUB", ".sup": "PGS"}
+
+# Language tokens seen in subtitle file names (ISO 639-1/-2 codes and English names).
+_LANGUAGES = {
+    "English": "en eng english", "French": "fr fre fra french", "German": "de ger deu german",
+    "Spanish": "es spa spanish", "Italian": "it ita italian", "Portuguese": "pt por portuguese",
+    "Russian": "ru rus russian", "Japanese": "ja jpn japanese", "Chinese": "zh chi zho chinese",
+    "Korean": "ko kor korean", "Dutch": "nl dut nld dutch", "Swedish": "sv swe swedish",
+    "Danish": "da dan danish", "Norwegian": "no nor norwegian", "Finnish": "fi fin finnish",
+    "Polish": "pl pol polish", "Turkish": "tr tur turkish", "Arabic": "ar ara arabic",
+    "Hebrew": "he heb hebrew", "Hindi": "hi hin hindi", "Czech": "cs cze ces czech",
+    "Greek": "el gre ell greek", "Hungarian": "hu hun hungarian", "Thai": "th tha thai",
+    "Vietnamese": "vi vie vietnamese", "Indonesian": "id ind indonesian",
+    "Romanian": "ro rum ron romanian", "Ukrainian": "uk ukr ukrainian",
+}
+LANGUAGE_TOKENS = {tok: name for name, toks in _LANGUAGES.items() for tok in toks.split()}
+
+
+def sidecar_fields(video: Path, filename: str, has_idx: bool = False) -> list[str] | None:
+    """SUB_FIELDS values for `filename` if it is a subtitle file belonging to `video`, else None.
+
+    A sidecar is '<video stem>[.tags].<ext>', e.g. Movie.en.forced.srt. Tags that name a
+    language set the language, 'forced'/'default' set the flags, anything else becomes the Name.
+    """
+    p = Path(filename)
+    fmt = SIDECAR_FORMATS.get(p.suffix.lower())
+    stem = video.stem
+    if not fmt or not p.stem.lower().startswith(stem.lower()):
+        return None
+    rest = p.stem[len(stem):]
+    if rest and not rest.startswith("."):
+        return None
+    if p.suffix.lower() == ".sub" and has_idx:
+        fmt = "VobSub"
+    language, forced, default, name = "", False, False, []
+    for tok in (t for t in rest.split(".") if t):
+        low = tok.lower()
+        if low == "forced":
+            forced = True
+        elif low == "default":
+            default = True
+        elif not language and low in LANGUAGE_TOKENS:
+            language = LANGUAGE_TOKENS[low]
+        else:
+            name.append(tok)
+    return [language or "und", fmt + EXTERNAL, " ".join(name),
+            "Forced" if forced else "", "Default" if default else ""]
+
+
+def sidecar_subs(video: Path, names: Iterable[str]) -> list[list[str]]:
+    """SUB_FIELDS rows for every subtitle file in `names` (a directory listing) that belongs to `video`."""
+    names = sorted(names, key=str.lower)
+    idx_stems = {Path(n).stem.lower() for n in names if Path(n).suffix.lower() == ".idx"}
+    out = []
+    for n in names:
+        fields = sidecar_fields(video, n, has_idx=Path(n).stem.lower() in idx_stems)
+        if fields:
+            out.append(fields)
+    return out
 
 
 def hdr(v) -> str:
@@ -194,8 +271,13 @@ def hdr(v) -> str:
 
 # --------------------------------------------------------------------------- record building
 
-def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS) -> FileRecord:
-    """Build a FileRecord from a list of MediaInfo-like track objects (testable without MediaInfo)."""
+def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,
+                       sibling_names: Iterable[str] = ()) -> FileRecord:
+    """Build a FileRecord from a list of MediaInfo-like track objects (testable without MediaInfo).
+
+    sibling_names: file names in the video's folder; subtitle files among them are added after
+    the embedded subtitle tracks.
+    """
     gen = next((t for t in tracks if t.track_type == "General"), None)
     vids = [t for t in tracks if t.track_type == "Video"]
     auds = [t for t in tracks if t.track_type == "Audio"]
@@ -211,6 +293,7 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     except (TypeError, ValueError):
         size_gb = None
 
+    external = sidecar_subs(path, sibling_names)
     w, h = g(v, "width"), g(v, "height")
     other_dar = g(v, "other_display_aspect_ratio")
     return FileRecord(
@@ -228,9 +311,9 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
         hdr=hdr(v) if v else "",
         video_bitrate=kbps(g(v, "bit_rate")) or kbps(g(gen, "overall_bit_rate")),
         audio=[describe_audio(a) for a in auds],
-        subs=[describe_sub(s) for s in subs],
+        subs=[describe_sub(s) for s in subs] + [describe_sub_fields(f) for f in external],
         audio_split=[audio_fields(a) for a in auds],
-        subs_split=[sub_fields(s) for s in subs],
+        subs_split=[sub_fields(s) for s in subs] + external,
     )
 
 
@@ -238,4 +321,8 @@ def scan_file(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS
     """Read one file with MediaInfo. Raises on unreadable files."""
     from pymediainfo import MediaInfo  # imported lazily so the rest of core works without it
     mi = MediaInfo.parse(str(path))
-    return record_from_tracks(path, mi.tracks, extras_folders)
+    try:
+        siblings = os.listdir(path.parent)
+    except OSError:
+        siblings = []
+    return record_from_tracks(path, mi.tracks, extras_folders, siblings)

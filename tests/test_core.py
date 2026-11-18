@@ -132,6 +132,50 @@ class TestFindFiles(unittest.TestCase):
             self.assertEqual(len(core.find_files([root], should_stop=None)), 2)
 
 
+class TestSidecarSubs(unittest.TestCase):
+    V = Path("D:/m/Movie (2020).mkv")
+
+    def test_language_flags_and_name(self):
+        f = core.sidecar_fields(self.V, "Movie (2020).en.forced.srt")
+        self.assertEqual(f, ["English", "SRT (external)", "", "Forced", ""])
+        f = core.sidecar_fields(self.V, "Movie (2020).French.SDH.default.ass")
+        self.assertEqual(f, ["French", "ASS (external)", "SDH", "", "Default"])
+
+    def test_no_language_is_und(self):
+        self.assertEqual(core.sidecar_fields(self.V, "Movie (2020).srt")[0], "und")
+        self.assertEqual(core.sidecar_fields(self.V, "Movie (2020).Commentary.srt"),
+                         ["und", "SRT (external)", "Commentary", "", ""])
+
+    def test_not_a_match(self):
+        self.assertIsNone(core.sidecar_fields(self.V, "Movie (2020) Part 2.en.srt"))
+        self.assertIsNone(core.sidecar_fields(self.V, "Other.en.srt"))
+        self.assertIsNone(core.sidecar_fields(self.V, "Movie (2020).nfo"))
+        self.assertIsNone(core.sidecar_fields(self.V, "movie (2020).idx".replace("idx", "txt")))
+
+    def test_case_insensitive_and_sup(self):
+        self.assertEqual(core.sidecar_fields(self.V, "MOVIE (2020).EN.SUP")[:2], ["English", "PGS (external)"])
+
+    def test_vobsub_pair_counts_once(self):
+        names = ["Movie (2020).idx", "Movie (2020).sub", "Movie (2020).en.srt", "readme.txt"]
+        rows = core.sidecar_subs(self.V, names)
+        self.assertEqual([r[1] for r in rows], ["SRT (external)", "VobSub (external)"])
+
+    def test_sub_without_idx(self):
+        self.assertEqual(core.sidecar_subs(self.V, ["Movie (2020).sub"])[0][1], "SUB (external)")
+
+    def test_record_appends_after_embedded(self):
+        tracks = [NS(track_type="General"), NS(track_type="Video"),
+                  NS(track_type="Text", language="en", format="PGS")]
+        r = core.record_from_tracks(self.V, tracks, sibling_names=["Movie (2020).de.srt"])
+        self.assertEqual(r.subs, ["en | PGS", "German | SRT | External"])
+        self.assertEqual(r.subs_split[1], ["German", "SRT (external)", "", "", ""])
+        self.assertEqual(len(r.subs), len(r.subs_split))
+
+    def test_no_siblings_unchanged(self):
+        r = core.record_from_tracks(self.V, [NS(track_type="General")])
+        self.assertEqual((r.subs, r.subs_split), ([], []))
+
+
 class TestRecord(unittest.TestCase):
     def test_full(self):
         tracks = [

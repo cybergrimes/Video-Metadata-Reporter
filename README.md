@@ -23,6 +23,7 @@ Columns: `Folder, File, Type, Container, Size (GB), Duration (min), Video Codec,
 
 - Audio cell: `English | Dolby TrueHD with Dolby Atmos | 7.1 | 4,000 kb/s | "Title" | Default`
 - Subtitle cell: `English | PGS | "Title" | Forced | Default`
+- **External subtitles** next to a video (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`/`.idx`, `.sup`) are added after the embedded tracks and count in `# Subs`. They must be named like the video, e.g. `Movie (2020).en.forced.srt`. The language, `forced` and `default` come from the name, other words become the Name, and no language shows `und`. The cell ends with `External` (or Type shows `SRT (external)` in separate-column mode). Subtitle files in a separate `Subs` folder are not picked up.
 - **Type** is `Main`, or `Extras` / `Featurettes` / `Scenes` when a parent folder has that name (editable in the app).
 - **HDR** is one of `Dolby Vision [+ HDR10]`, `HDR10+`, `HDR10`, `HLG`, `SDR`.
 - Header row is bold, panes are frozen, filters are on, and columns are auto-sized to fit their longest value.
