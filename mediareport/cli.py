@@ -4,10 +4,9 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import datetime
-from pathlib import Path
 
 from .core import DEFAULT_EXTRAS_FOLDERS, find_files
-from .settings import DEFAULT_EXPORT_DIR
+from .paths import resolve_export_dir
 
 USAGE = """\
 Scan folders of movie/TV rips and write an Excel report with one row per file
@@ -53,7 +52,10 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output
     if not output:
         stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        output = DEFAULT_EXPORT_DIR / f"media_report_{stamp}.xlsx"
+        export_dir, note = resolve_export_dir("")
+        if note:
+            print(note)
+        output = export_dir / f"media_report_{stamp}.xlsx"
     out = write_workbook(result.records, result.errors, output,
                          ExcelOptions(max_audio=args.max_audio, max_subs=args.max_subs))
     n_err = len(result.errors)
