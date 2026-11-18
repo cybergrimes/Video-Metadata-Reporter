@@ -1,0 +1,61 @@
+name: Release
+
+# Runs when a version tag such as 0.1.7 is pushed. Builds the Windows app, zips it and
+# creates a DRAFT pre-release (title = the version) for you to add notes to and publish.
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+
+      - name: Tag must match the app version
+        shell: pwsh
+        run: |
+          $version = python -c "import mediareport; print(mediareport.__version__)"
+          if ($version -ne "${{ github.ref_name }}") {
+            Write-Error "Tag ${{ github.ref_name }} does not match mediareport.__version__ ($version)."
+            exit 1
+          }
+
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m unittest discover -s tests
+      - run: python -m PyInstaller VideoMetadataReporter.spec --noconfirm
+
+      - name: Zip the build
+        shell: pwsh
+        run: |
+          $zip = "VideoMetadataReporter-${{ github.ref_name }}-windows.zip"
+          Compress-Archive -Path dist\VideoMetadataReporter -DestinationPath $zip -CompressionLevel Optimal
+          "ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Check the zipped app starts
+        shell: pwsh
+        run: |
+          $check = Join-Path $env:RUNNER_TEMP "check"
+          Expand-Archive -Path $env:ZIP -DestinationPath $check
+          $p = Start-Process -FilePath "$check\VideoMetadataReporter\VideoMetadataReporter.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) {
+            Write-Error "The app exited during startup (exit code $($p.ExitCode))."
+            exit 1
+          }
+          Stop-Process -Id $p.Id -Force
+
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" $env:ZIP --verify-tag --draft --prerelease --title "${{ github.ref_name }}" --notes ""
