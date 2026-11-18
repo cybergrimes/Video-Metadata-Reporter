@@ -152,14 +152,14 @@ if __name__ == "__main__":
 class TestMediaInfoWarning(JobTestBase):
     """The default scan reports which MediaInfo is used and repeats a fallback warning at the very end."""
 
-    def run_default_scan(self, choice):
+    def run_default_scan(self, choice, **kw):
         class FakeCtx:
             def __init__(self, roots): pass
             def scan_file(self, path, extras): return fake_scan(path, extras)
         with mock.patch.object(job, "resolve_mediainfo", return_value=choice), \
                 mock.patch.object(job, "ScanContext", FakeCtx):
             return job.run_job(self.opts(), self.logs.append, lambda *a: None, self.cancel,
-                               now=NOW, scan_fn=None)
+                               now=NOW, scan_fn=None, **kw)
 
     def test_normal_run_logs_version_and_no_warning(self):
         from mediareport.core import MediaInfoChoice
@@ -180,3 +180,11 @@ class TestMediaInfoWarning(JobTestBase):
             self.run_job()
         r.assert_not_called()
         self.assertFalse(any("MediaInfo" in m for m in self.logs))
+
+    def test_warning_goes_to_warn_callback_when_given(self):
+        from mediareport.core import MediaInfoChoice
+        warned = []
+        self.run_default_scan(MediaInfoChoice(None, "24.12", "WARNING: older MediaInfo used"), warn=warned.append)
+        self.assertEqual(warned, ["WARNING: older MediaInfo used"])
+        self.assertFalse(any(m.startswith("WARNING") for m in self.logs))
+        self.assertTrue(self.logs[-1].startswith("Done:"))

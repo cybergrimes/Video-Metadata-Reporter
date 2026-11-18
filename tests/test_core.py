@@ -398,9 +398,10 @@ class TestResolveMediaInfo(unittest.TestCase):
         core._choice = None
         self.addCleanup(setattr, core, "_choice", None)
 
-    def resolve(self, vendored, probe, platform="win32"):
+    def resolve(self, vendored, probe, platform="win32", expected="26.10"):
         with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=vendored), \
                 self._mock.patch.object(core, "_probe_mediainfo", side_effect=probe), \
+                self._mock.patch.object(core, "_vendored_version", return_value=expected), \
                 self._mock.patch.object(core.sys, "platform", platform):
             return core.resolve_mediainfo(refresh=True)
 
@@ -417,15 +418,19 @@ class TestResolveMediaInfo(unittest.TestCase):
         c = self.resolve(Path("v/MediaInfo.dll"), probe)
         self.assertIsNone(c.library)
         self.assertEqual(c.version, "24.12")
-        self.assertTrue(c.warning.startswith("WARNING:"))
-        for part in ("couldn't be loaded", "bad image", "24.12"):
-            self.assertIn(part, c.warning)
+        self.assertEqual(c.warning, self.WARNING)
         self.assertEqual(calls, [str(Path("v/MediaInfo.dll")), None])
 
-    def test_missing_dll_falls_back_with_warning(self):
+    WARNING = "WARNING: MediaInfo 26.10 couldn't be loaded; used the older MediaInfo 24.12."
+
+    def test_missing_dll_falls_back_with_same_warning(self):
         c = self.resolve(None, lambda lib: ("24.12", ""))
         self.assertIsNone(c.library)
-        self.assertIn("is missing", c.warning)
+        self.assertEqual(c.warning, self.WARNING)
+
+    def test_warning_without_a_known_vendored_version(self):
+        c = self.resolve(None, lambda lib: ("24.12", ""), expected="")
+        self.assertEqual(c.warning, "WARNING: MediaInfo couldn't be loaded; used the older MediaInfo 24.12.")
 
     def test_off_windows_is_not_a_warning(self):
         c = self.resolve(None, lambda lib: ("24.12", ""), platform="linux")

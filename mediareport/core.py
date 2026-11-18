@@ -434,6 +434,17 @@ def _probe_mediainfo(library_file: str | None) -> tuple[str, str]:
     return version, error
 
 
+def _vendored_version() -> str:
+    """The MediaInfo version we ship, read from vendor/mediainfo/VERSION ('' if unavailable)."""
+    from . import paths
+    try:
+        first = (paths.vendored_mediainfo_dir() / "VERSION").read_text(encoding="utf-8").splitlines()[0]
+    except (OSError, IndexError):
+        return ""
+    m = re.search(r"\b\d+\.\d+\b", first)
+    return m.group(0) if m else ""
+
+
 def resolve_mediainfo(refresh: bool = False) -> MediaInfoChoice:
     """Pick the MediaInfo library once per run: the vendored one, else pymediainfo's with a warning."""
     global _choice
@@ -447,18 +458,14 @@ def resolve_mediainfo(refresh: bool = False) -> MediaInfoChoice:
             if not error:
                 _choice = MediaInfoChoice(str(dll), version)
                 return _choice
-            reason = f"couldn't be loaded ({error})"
-        elif sys.platform == "win32":
-            reason = "is missing"
-        else:
-            reason = ""    # not expected off Windows: pymediainfo's own library is the normal one
+        # Missing or unloadable. Off Windows pymediainfo's own library is the normal one: no warning.
+        expected = _vendored_version() if sys.platform == "win32" else ""
         version, _error = _probe_mediainfo(None)
         warning = ""
-        if reason:
-            warning = (f"WARNING: the MediaInfo library in vendor/mediainfo {reason}. "
-                       f"Used the older MediaInfo {version or '(unknown version)'} that comes with pymediainfo "
-                       "instead; some values (for example DTS:X channels and a few bitrates) may differ "
-                       "from earlier reports.")
+        if sys.platform == "win32":
+            what = f"MediaInfo {expected}" if expected else "MediaInfo"
+            older = f"the older MediaInfo {version}" if version else "the older bundled MediaInfo"
+            warning = f"WARNING: {what} couldn't be loaded; used {older}."
         _choice = MediaInfoChoice(None, version, warning)
         return _choice
 

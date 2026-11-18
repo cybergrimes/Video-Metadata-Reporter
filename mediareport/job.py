@@ -58,11 +58,13 @@ def run_job(
     find_fn: Callable[..., Sequence[Path]] = find_files,
     scan_fn: Callable[[Path, object], FileRecord] | None = None,
     output: Path | None = None,
+    warn: LogFn | None = None,
 ) -> JobResult:
     """Run one report. Never raises for expected failures; returns a JobResult.
 
     scan_fn defaults to MediaInfo reading; output overrides the report file path
-    (otherwise it is named from opts and saved in the export folder).
+    (otherwise it is named from opts and saved in the export folder). warn, if given,
+    receives warnings (shown prominently by the GUI); otherwise they go to log.
     """
     # Imported here so a missing openpyxl is reported in the log, not at import time.
     from .excel import ExcelOptions, unique_path, write_workbook
@@ -75,7 +77,7 @@ def run_job(
         res = JobResult(status=status, message=message, seconds=time.monotonic() - start, **kw)
         log(message)
         if late_warning:
-            log(late_warning)
+            (warn or log)(late_warning)
         return res
 
     folders = [f for f in opts.folders if f.strip()]

@@ -27,15 +27,18 @@ def app_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def vendored_mediainfo() -> Path | None:
-    """The MediaInfo.dll shipped in vendor/mediainfo, or None (pymediainfo's bundled copy is used then).
+def vendored_mediainfo_dir() -> Path:
+    """The vendor/mediainfo folder (it may not exist). From source it is in the project folder;
+    in a PyInstaller build it is under the bundle root."""
+    root = Path(getattr(sys, "_MEIPASS", "")) if getattr(sys, "frozen", False) else app_dir()
+    return root / "vendor" / "mediainfo"
 
-    From source it sits in the project folder; in a PyInstaller build it is under the bundle root.
-    """
+
+def vendored_mediainfo() -> Path | None:
+    """The MediaInfo.dll shipped in vendor/mediainfo, or None (pymediainfo's bundled copy is used then)."""
     if sys.platform != "win32":
         return None
-    root = Path(getattr(sys, "_MEIPASS", "")) if getattr(sys, "frozen", False) else app_dir()
-    dll = root / "vendor" / "mediainfo" / "MediaInfo.dll"
+    dll = vendored_mediainfo_dir() / "MediaInfo.dll"
     return dll if dll.is_file() else None
 
 

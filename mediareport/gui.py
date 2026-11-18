@@ -379,6 +379,7 @@ class App:
             try:
                 res = run_job(opts,
                               log=lambda m: q.put(("log", m)),
+                              warn=lambda m: q.put(("log_error", m)),
                               progress=lambda d, t, p, e: q.put(("progress", d, t, p, e)),
                               cancel_event=cancel)
             except Exception:
