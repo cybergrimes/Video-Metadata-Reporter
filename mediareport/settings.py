@@ -65,9 +65,11 @@ def load(path: Path | None = None) -> Options:
     path = path or settings_path()
     opts = Options()
     if not path.exists() and path.name == INI_NAME:
-        for name in LEGACY_INI_NAMES:              # settings saved under an earlier name
-            if path.with_name(name).exists():
-                path = path.with_name(name)
+        legacy_dirs = [path.parent, path.parent.with_name("MediaReport")]   # app folder, or old per-user folder
+        for folder in legacy_dirs:                 # settings saved under an earlier name
+            found = next((folder / n for n in LEGACY_INI_NAMES if (folder / n).exists()), None)
+            if found:
+                path = found
                 break
     cp = configparser.ConfigParser(interpolation=None)
     try:

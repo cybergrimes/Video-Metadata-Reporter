@@ -33,6 +33,16 @@ class TestSettings(unittest.TestCase):
         settings.save(o, self.ini)             # saving writes the new name and section
         self.assertIn("[Video Metadata Reporter]", self.ini.read_text(encoding="utf-8"))
 
+    def test_loads_from_old_config_folder(self):
+        old_dir = self.dir / "MediaReport"
+        old_dir.mkdir()
+        (old_dir / "MediaReport.ini").write_text("[Media Report]
+max_subs = 4
+", encoding="utf-8")
+        new_dir = self.dir / "VideoMetadataReporter"
+        new_dir.mkdir()
+        self.assertEqual(settings.load(new_dir / "settings.ini").max_subs, 4)
+
     def test_round_trip(self):
         o = settings.Options(folders=[r"D:\Movies", r"E:\TV Shows"], export_folder=r"D:\Out",
                              max_audio=3, max_subs=6, extras_folders=["extras", "bonus"], workers=8)

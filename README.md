@@ -10,7 +10,7 @@ Video Metadata Reporter uses the [MediaInfo](https://mediaarea.net/en/MediaInfo)
 
 1. Download and unzip the release.
 2. Run `VideoMetadataReporter.exe`.
-3. Click **Add...** and choose one or more library folders (Ctrl-click or Shift-click to pick several), then **Start scan**.
+3. Click **Add** and choose one or more library folders (Ctrl-click or Shift-click to pick several), then **Start scan**.
 4. When it finishes, click **Open report**.
 
 Nothing is installed and no console window opens. Progress and errors appear in the log pane.
@@ -46,7 +46,7 @@ Columns: `Folder, File, Category, Container, Encoded date, Writing application, 
 
 ## Settings
 
-Settings are saved to `settings.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A `MediaReport.ini` or `VideoMetadataReporter.ini` from an earlier version is read once if the new file doesn't exist yet. A `settings.ini` from an earlier version is read once if the new file does not exist yet.
+Settings are saved to `settings.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A settings file from an earlier version (`VideoMetadataReporter.ini` or `MediaReport.ini`) is read if `settings.ini` doesn't exist yet. A `settings.ini` from an earlier version is read once if the new file does not exist yet.
 
 If the app fails to start, the error is shown in a dialog and saved to `startup-error.log` in `%APPDATA%\VideoMetadataReporter`.
 

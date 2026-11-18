@@ -1,4 +1,4 @@
-"""Command-line front-end (same flags as the original media_report.py)."""
+"""Command-line front-end (same flags as the original script)."""
 from __future__ import annotations
 
 import argparse
@@ -15,8 +15,8 @@ Scan folders of movie/TV rips and write an Excel report with one row per file
 and columns Audio 1, Audio 2, ... / Sub 1, Sub 2, ...
 
 Examples:
-    py media_report.py "D:\\Movies" "D:\\TV" -o library.xlsx
-    py media_report.py "D:\\Movies" --max-audio 3 --max-subs 6
+    py video_metadata_reporter.py "D:\\Movies" "D:\\TV" -o library.xlsx
+    py video_metadata_reporter.py "D:\\Movies" --max-audio 3 --max-subs 6
 """
 
 
