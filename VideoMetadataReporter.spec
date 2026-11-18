@@ -6,6 +6,8 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
 # pymediainfo ships the MediaInfo library (DLL / dylib) inside the wheel
 datas = collect_data_files("pymediainfo")
 binaries = collect_dynamic_libs("pymediainfo")
+# Our own, newer MediaInfo.dll (see vendor/mediainfo/VERSION); the app prefers it over pymediainfo's.
+datas += [("vendor/mediainfo", "vendor/mediainfo")]
 
 a = Analysis(
     ["VideoMetadataReporter.pyw"],

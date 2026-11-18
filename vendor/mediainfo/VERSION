@@ -1,0 +1,5 @@
+MediaInfoLib 26.10 (Windows x64 DLL)
+Source: https://mediaarea.net/download/binary/libmediainfo0/26.10/MediaInfo_DLL_26.10_Windows_x64_WithoutInstaller.zip
+Zip SHA-256: 4EFE172DF014693732E8B64A004CF382B8599EAF86BE26A9B38C0D2993E60E1D
+Files: MediaInfo.dll, License.html (from Developers\License.html in the zip)
+Update by hand: replace the files, update this file and THIRD_PARTY_NOTICES.md, run the tests.

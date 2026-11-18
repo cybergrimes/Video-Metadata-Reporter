@@ -27,6 +27,18 @@ def app_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def vendored_mediainfo() -> Path | None:
+    """The MediaInfo.dll shipped in vendor/mediainfo, or None (pymediainfo's bundled copy is used then).
+
+    From source it sits in the project folder; in a PyInstaller build it is under the bundle root.
+    """
+    if sys.platform != "win32":
+        return None
+    root = Path(getattr(sys, "_MEIPASS", "")) if getattr(sys, "frozen", False) else app_dir()
+    dll = root / "vendor" / "mediainfo" / "MediaInfo.dll"
+    return dll if dll.is_file() else None
+
+
 def is_writable_dir(path: Path) -> bool:
     """True if path exists (or can be created) and a file can be written in it."""
     try:

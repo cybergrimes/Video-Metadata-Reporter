@@ -52,3 +52,24 @@ class TestResolveExportDir(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVendoredMediaInfo(unittest.TestCase):
+    def test_found_in_app_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            dll = Path(d) / "vendor" / "mediainfo" / "MediaInfo.dll"
+            dll.parent.mkdir(parents=True)
+            dll.write_bytes(b"")
+            with mock.patch.object(paths, "app_dir", return_value=Path(d)), \
+                    mock.patch.object(paths.sys, "platform", "win32"):
+                self.assertEqual(paths.vendored_mediainfo(), dll)
+
+    def test_missing_gives_none(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(paths, "app_dir", return_value=Path(d)), \
+                    mock.patch.object(paths.sys, "platform", "win32"):
+                self.assertIsNone(paths.vendored_mediainfo())
+
+    def test_non_windows_gives_none(self):
+        with mock.patch.object(paths.sys, "platform", "linux"):
+            self.assertIsNone(paths.vendored_mediainfo())

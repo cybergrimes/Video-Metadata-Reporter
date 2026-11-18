@@ -395,11 +395,24 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     )
 
 
+def mediainfo_library() -> str | None:
+    """Path of the vendored MediaInfo library, or None to use pymediainfo's bundled one."""
+    from . import paths
+    dll = paths.vendored_mediainfo()
+    return str(dll) if dll else None
+
+
+def mediainfo_version() -> str:
+    """Version of the MediaInfo library in use, e.g. '26.10'."""
+    from pymediainfo import MediaInfo
+    return MediaInfo._get_library(library_file=mediainfo_library())[2]
+
+
 def scan_file(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,
               root: Path | None = None, listing: "FolderListing | None" = None) -> FileRecord:
     """Read one file with MediaInfo. Raises on unreadable files."""
     from pymediainfo import MediaInfo  # imported lazily so the rest of core works without it
-    mi = MediaInfo.parse(str(path))
+    mi = MediaInfo.parse(str(path), library_file=mediainfo_library())
     if listing is None:
         listing = read_listing(path.parent)
     return record_from_tracks(path, mi.tracks, extras_folders, listing, root)
