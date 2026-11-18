@@ -103,11 +103,11 @@ export_folder = {export_folder}
 max_audio = {max_audio}
 max_subs = {max_subs}
 
-; Put each audio/subtitle detail in its own column (Audio 1 Language, Audio 1 Type, ...)
+; Put each audio/subtitle detail in its own column (Audio 1 Language, Audio 1 Codec, ...)
 ; instead of one combined cell per track. yes or no.
 split_tracks = {split_tracks}
 
-; Folder names (comma-separated, any case) that mark bonus content in the Type column.
+; Folder names (comma-separated, any case) that mark bonus content in the Category column.
 extras_folders = {extras_folders}
 
 ; Files to read at the same time. Lower this for slow network drives.

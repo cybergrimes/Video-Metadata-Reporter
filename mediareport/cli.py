@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-audio", type=non_negative, default=0, help="Cap Audio columns (0 = as many as needed)")
     ap.add_argument("--max-subs", type=non_negative, default=0, help="Cap Sub columns (0 = as many as needed)")
     ap.add_argument("--split-tracks", action="store_true",
-                    help="Put each audio/sub detail in its own column (Audio 1 Language, Audio 1 Type, ...)")
+                    help="Put each audio/sub detail in its own column (Audio 1 Language, Audio 1 Codec, ...)")
     ap.add_argument("--workers", type=int, default=4, choices=range(1, 33), metavar="1-32", help="Files to read in parallel (default 4)")
     ap.add_argument("--extras", default=",".join(DEFAULT_EXTRAS_FOLDERS),
                     help="Comma-separated folder names that mark bonus content (default: %(default)s)")

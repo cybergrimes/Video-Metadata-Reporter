@@ -95,7 +95,7 @@ class App:
         self.ent_extras = ttk.Entry(ff, textvariable=self.var_extras)
         self.ent_extras.grid(row=3, column=1, columnspan=3, sticky="ew", padx=(PAD, 0), pady=(PAD, 0))
         ttk.Label(ff, text="Separate names with commas. Videos in these folders are still scanned, but get the "
-                           "folder name in the Type column instead of 'Main'. Leave empty to omit the Type column.",
+                           "folder name in the Category column instead of 'Main'. Leave empty to omit the Category column.",
                   foreground="gray", wraplength=470, justify="left",
                   ).grid(row=4, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
 
@@ -142,7 +142,7 @@ class App:
         self.var_split = tk.BooleanVar()
         self.chk_split = ttk.Checkbutton(
             of, text="Separate columns for each audio/subtitle detail "
-                     "(Audio 1 Language, Audio 1 Type, Audio 1 Channels, ...)",
+                     "(Audio 1 Language, Audio 1 Codec, Audio 1 Channels, ...)",
             variable=self.var_split)
         self.chk_split.grid(row=4, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
 

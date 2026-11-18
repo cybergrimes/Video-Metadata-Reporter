@@ -47,3 +47,15 @@ class TestMisc(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRenamedColumns(unittest.TestCase):
+    def test_category_and_split_headers(self):
+        r = FileRecord(folder="D:/x", file="a", audio=["a"], subs=["s"],
+                       audio_split=[["", "", "", "", "", ""]], subs_split=[["", "", "", "", ""]])
+        hdr = [c.value for c in excel.build_workbook([r], [], excel.ExcelOptions(split_tracks=True))["Library"][1]]
+        self.assertIn("Category", hdr)
+        self.assertNotIn("Type", hdr)
+        self.assertIn("Audio 1 Codec", hdr)
+        self.assertIn("Sub 1 Format", hdr)
+        self.assertNotIn("Audio 1 Type", hdr)

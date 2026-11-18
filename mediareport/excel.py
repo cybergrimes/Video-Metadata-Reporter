@@ -11,7 +11,7 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, SUBS_COUNT_COLUMN, TYPE_COLUMN, FileRecord, ScanError
+from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, SUBS_COUNT_COLUMN, CATEGORY_COLUMN, FileRecord, ScanError
 
 HEADER_FILL = "DDEBF7"
 PADDING = 2          # extra width (chars) so text doesn't touch the gridline
@@ -22,8 +22,8 @@ FILTER_BUTTON = 3    # extra width on header cells for the autofilter arrow
 class ExcelOptions:
     max_audio: int = 0   # 0 = as many Audio columns as needed
     max_subs: int = 0    # 0 = as many Sub columns as needed
-    include_type: bool = True    # False = leave out the "Type" column (no extras folders defined)
-    split_tracks: bool = False   # True = "Audio 1 Language", "Audio 1 Type", ... instead of one mixed cell
+    include_category: bool = True    # False = leave out the "Category" column (no extras folders defined)
+    split_tracks: bool = False   # True = "Audio 1 Language", "Audio 1 Codec", ... instead of one mixed cell
 
 
 def track_column_counts(records: Sequence[FileRecord], opts: ExcelOptions) -> tuple[int, int]:
@@ -40,7 +40,7 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
                    opts: ExcelOptions | None = None) -> Workbook:
     opts = opts or ExcelOptions()
     n_aud, n_sub = track_column_counts(records, opts)
-    base = BASE_COLUMNS if opts.include_type else [c for c in BASE_COLUMNS if c != TYPE_COLUMN]
+    base = BASE_COLUMNS if opts.include_category else [c for c in BASE_COLUMNS if c != CATEGORY_COLUMN]
     if opts.split_tracks:
         headers = (base
                    + [f"Audio {i} {f}" for i in range(1, n_aud + 1) for f in AUDIO_FIELDS]
@@ -62,8 +62,8 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
             audio = (r.audio + [""] * n_aud)[:n_aud]
             subs = (r.subs + [""] * n_sub)[:n_sub]
         values = r.base_values()
-        if not opts.include_type:
-            del values[BASE_COLUMNS.index(TYPE_COLUMN)]
+        if not opts.include_category:
+            del values[BASE_COLUMNS.index(CATEGORY_COLUMN)]
         ws.append([_clean(v) for v in values + audio + [len(r.subs)] + subs])
     _force_text(ws)
 

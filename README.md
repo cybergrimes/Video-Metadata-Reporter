@@ -19,12 +19,12 @@ macOS and Linux builds are planned but not available yet. You can run from sourc
 
 One workbook per scan with a **Library** sheet (one row per video file) and, if any files couldn't be read, an **Errors** sheet.
 
-Columns: `Folder, File, Type, Container, Size (GB), Duration (min), Video Codec, Resolution, Aspect, Frame Rate, Bit Depth, Dynamic Range, Video Bitrate, # Audio`, then `Audio 1..N`, then `# Subs`, then `Sub 1..N`.
+Columns: `Folder, File, Category, Container, Size (GB), Duration (min), Video Codec, Resolution, Aspect, Frame Rate, Bit Depth, Dynamic Range, Video Bitrate, # Audio`, then `Audio 1..N`, then `# Subs`, then `Sub 1..N`.
 
 - Audio cell: `English | Dolby TrueHD with Dolby Atmos | 7.1 | 4,000 kb/s | "Title" | Default`
 - Subtitle cell: `English | PGS | "Title" | Forced | Default`
-- **External subtitles** next to a video (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`/`.idx`, `.sup`) are added after the embedded tracks and count in `# Subs`. They must be named like the video, e.g. `Movie (2020).en.forced.srt`. If two videos share a name prefix (`Movie.mkv` and `Movie.Trailer.mkv`), a subtitle goes to the video with the longest matching name. The language, `forced` and `default` come from the name, other words become the Name, and no language shows `und`. Two-letter codes that are also words (`no`, `it`, `id`, `he`, `hi`) count as a language only in lower case. The cell ends with `External` (or Type shows `SRT (external)` in separate-column mode). Subtitle files in a separate `Subs` folder are not picked up.
-- **Type** is `Main`, or `Extras` / `Featurettes` / `Scenes` when a folder below the one you scanned has that name (editable in the app).
+- **External subtitles** next to a video (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`/`.idx`, `.sup`) are added after the embedded tracks and count in `# Subs`. They must be named like the video, e.g. `Movie (2020).en.forced.srt`. If two videos share a name prefix (`Movie.mkv` and `Movie.Trailer.mkv`), a subtitle goes to the video with the longest matching name. The language, `forced` and `default` come from the name, other words become the Name, and no language shows `und`. Two-letter codes that are also words (`no`, `it`, `id`, `he`, `hi`) count as a language only in lower case. The cell ends with `External` (or the Format shows `SRT (external)` in separate-column mode). Subtitle files in a separate `Subs` folder are not picked up.
+- **Category** is `Main`, or `Extras` / `Featurettes` / `Scenes` when a folder below the one you scanned has that name (editable in the app).
 - **Dynamic Range** is one of `Dolby Vision [+ HDR10]`, `HDR10+`, `HDR10`, `HLG`, `SDR`.
 - The header row is bold and frozen, filters are on, and columns are auto-sized to fit their longest value.
 - Files scanned: mkv, mp4, m4v, avi, mov, ts, m2ts, wmv, mpg, mpeg, webm.
@@ -35,9 +35,9 @@ Columns: `Folder, File, Type, Container, Size (GB), Duration (min), Video Codec,
 |---|---|
 | Save reports to | Where reports go. Default is an `export` folder next to the app. If that isn't writable, reports go to `Documents\Media Report` and the log says so. |
 | Max audio / subtitle columns | Cap the number of `Audio N` / `Sub N` columns. `0` means no cap. The `# Audio` / `# Subs` columns always show the true count. |
-| Separate columns | Off: one combined cell per track. On: each detail gets its own column, grouped by track. Audio N: Language, Type (codec), Channels, Bitrate, Name, Default. Sub N: Language, Type (format), Name, Forced, Default. Also `split_tracks` in the ini and `--split-tracks` on the command line. |
+| Separate columns | Off: one combined cell per track. On: each detail gets its own column, grouped by track. Audio N: Language, Codec, Channels, Bitrate, Name, Default. Sub N: Language, Format, Name, Forced, Default. Also `split_tracks` in the ini and `--split-tracks` on the command line. |
 | Files at once | How many files are scanned in parallel. |
-| Extras folder names | Comma-separated folder names treated as non-main content. Videos in them are still scanned but get the folder name in the `Type` column instead of `Main`. If this is left empty, the `Type` column is left out of the report. |
+| Extras folder names | Comma-separated folder names treated as non-main content. Videos in them are still scanned but get the folder name in the `Category` column instead of `Main`. If this is left empty, the `Category` column is left out of the report. |
 
 **Cancel** stops the scan and writes nothing. Reports are never overwritten; a repeat name gets ` (2)`, ` (3)`, and so on.
 

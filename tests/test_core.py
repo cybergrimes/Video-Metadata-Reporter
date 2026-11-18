@@ -247,7 +247,7 @@ class TestRecord(unittest.TestCase):
         r = core.record_from_tracks(Path("D:/Movies/Film/Extras/a.mkv"), tracks)
         self.assertEqual(r.folder, str(Path("D:/Movies/Film/Extras")))
         self.assertEqual(r.file, "a.mkv")
-        self.assertEqual(r.type, "Extras")
+        self.assertEqual(r.category, "Extras")
         self.assertEqual(r.container, "Matroska")
         self.assertEqual(r.size_gb, 2.0)
         self.assertEqual(r.duration_min, 120)

@@ -17,25 +17,25 @@ DEFAULT_EXTRAS_FOLDERS = ("extras", "featurettes", "scenes")
 
 # Fixed columns, in output order. Audio N columns follow these, then '# Subs', then Sub N.
 BASE_COLUMNS = [
-    "Folder", "File", "Type", "Container", "Size (GB)", "Duration (min)",
+    "Folder", "File", "Category", "Container", "Size (GB)", "Duration (min)",
     "Video Codec", "Resolution", "Aspect", "Frame Rate", "Bit Depth", "Dynamic Range",
     "Video Bitrate", "# Audio",
 ]
 
 SUBS_COUNT_COLUMN = "# Subs"   # sits between the Audio N and Sub N columns
-TYPE_COLUMN = "Type"   # Main / Extras / ... ; omitted from reports when no extras folders are defined
+CATEGORY_COLUMN = "Category"   # Main / Extras / ... ; omitted from reports when no extras folders are defined
 
 # Per-track columns used when tracks are split into separate fields
-# ("Audio 1 Language", "Audio 1 Type", ...). Order matters.
-AUDIO_FIELDS = ["Language", "Type", "Channels", "Bitrate", "Name", "Default"]
-SUB_FIELDS = ["Language", "Type", "Name", "Forced", "Default"]
+# ("Audio 1 Language", "Audio 1 Codec", ...). Order matters.
+AUDIO_FIELDS = ["Language", "Codec", "Channels", "Bitrate", "Name", "Default"]
+SUB_FIELDS = ["Language", "Format", "Name", "Forced", "Default"]
 
 
 @dataclass
 class FileRecord:
     folder: str
     file: str
-    type: str = "Main"
+    category: str = "Main"
     container: str | None = None
     size_gb: float | None = None
     duration_min: int | None = None
@@ -55,7 +55,7 @@ class FileRecord:
     def base_values(self) -> list:
         """Values for BASE_COLUMNS, in order."""
         return [
-            self.folder, self.file, self.type, self.container, self.size_gb,
+            self.folder, self.file, self.category, self.container, self.size_gb,
             self.duration_min, self.video_codec, self.resolution, self.aspect,
             self.frame_rate, self.bit_depth, self.hdr, self.video_bitrate,
             len(self.audio),
@@ -348,7 +348,7 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     return FileRecord(
         folder=str(path.parent),
         file=path.name,
-        type=content_type(path, extras_folders, root),
+        category=content_type(path, extras_folders, root),
         container=g(gen, "format"),
         size_gb=size_gb,
         duration_min=mins,
