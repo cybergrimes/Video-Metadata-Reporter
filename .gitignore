@@ -7,8 +7,9 @@ HANDOFF.md
 export/
 *.xlsx
 ~$*
-VideoMetadataReporter.ini
+settings.ini
 MediaReport.ini
+VideoMetadataReporter.ini
 
 # Python
 __pycache__/

@@ -1,4 +1,4 @@
-"""User options, stored in a hand-editable VideoMetadataReporter.ini.
+"""User options, stored in a hand-editable settings.ini.
 
 Location: next to the app (portable) if that folder is writable or already has
 the file; otherwise the per-OS user config folder (see paths.user_config_dir).
@@ -14,8 +14,8 @@ from pathlib import Path
 from .core import DEFAULT_EXTRAS_FOLDERS, normalize_hidden_columns, parse_extras
 from .paths import app_dir, is_writable_dir, resolve_export_dir, user_config_dir
 
-INI_NAME = "VideoMetadataReporter.ini"
-LEGACY_INI_NAME = "MediaReport.ini"        # pre-rename settings file, still read if the new one is missing
+INI_NAME = "settings.ini"
+LEGACY_INI_NAMES = ("VideoMetadataReporter.ini", "MediaReport.ini")   # earlier names, read if settings.ini is missing
 LEGACY_SECTION = "Media Report"
 SECTION = "Video Metadata Reporter"
 MAX_WORKERS = 32
@@ -65,7 +65,10 @@ def load(path: Path | None = None) -> Options:
     path = path or settings_path()
     opts = Options()
     if not path.exists() and path.name == INI_NAME:
-        path = path.with_name(LEGACY_INI_NAME)     # settings saved before the rename
+        for name in LEGACY_INI_NAMES:              # settings saved under an earlier name
+            if path.with_name(name).exists():
+                path = path.with_name(name)
+                break
     cp = configparser.ConfigParser(interpolation=None)
     try:
         cp.read(path, encoding="utf-8")

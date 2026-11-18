@@ -46,7 +46,7 @@ Columns: `Folder, File, Category, Container, Encoded date, Writing application, 
 
 ## Settings
 
-Settings are saved to `VideoMetadataReporter.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A `MediaReport.ini` from an earlier version is read once if the new file doesn't exist yet. A `VideoMetadataReporter.ini` from an earlier version is read once if the new file does not exist yet.
+Settings are saved to `settings.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A `MediaReport.ini` or `VideoMetadataReporter.ini` from an earlier version is read once if the new file doesn't exist yet. A `settings.ini` from an earlier version is read once if the new file does not exist yet.
 
 If the app fails to start, the error is shown in a dialog and saved to `startup-error.log` in `%APPDATA%\VideoMetadataReporter`.
 
@@ -95,7 +95,7 @@ mediareport/
   scanner.py       parallel, cancellable scan
   excel.py         workbook writer
   job.py           find -> scan -> write, toolkit-agnostic
-  settings.py      VideoMetadataReporter.ini load/save
+  settings.py      settings.ini load/save
   paths.py         app/config/export folders, open file or folder
   folderpicker.py  multi-select folder dialog (Windows system dialog)
   gui.py           Tkinter front-end

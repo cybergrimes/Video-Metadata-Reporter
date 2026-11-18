@@ -23,7 +23,7 @@ class TestSettings(unittest.TestCase):
         self._td = tempfile.TemporaryDirectory()
         self.addCleanup(self._td.cleanup)
         self.dir = Path(self._td.name)
-        self.ini = self.dir / "VideoMetadataReporter.ini"
+        self.ini = self.dir / "settings.ini"
 
     def test_loads_pre_rename_settings(self):
         old = self.dir / "MediaReport.ini"
@@ -83,7 +83,7 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(got.extras_folders, [])
 
     def test_save_creates_parent_and_no_tmp(self):
-        p = self.dir / "sub" / "VideoMetadataReporter.ini"
+        p = self.dir / "sub" / "settings.ini"
         settings.save(settings.Options(), p)
         self.assertTrue(p.exists())
         self.assertFalse(p.with_name(p.name + ".tmp").exists())
