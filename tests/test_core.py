@@ -24,6 +24,10 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(core.kbps("abc"), "")
         self.assertEqual(core.kbps(4000000), "4,000 kb/s")
 
+    def test_kbps_zero_blank_and_tiny_not_zero(self):
+        self.assertEqual(core.kbps("0"), "")
+        self.assertEqual(core.kbps(300), "1 kb/s")
+
     def test_lang(self):
         self.assertEqual(core.lang(NS(other_language=["English", "en"], language="en")), "English")
         self.assertEqual(core.lang(NS(other_language=None, language="fr")), "fr")
@@ -132,6 +136,39 @@ class TestFindFiles(unittest.TestCase):
             self.assertEqual(len(core.find_files([root], should_stop=None)), 2)
 
 
+class TestRootAndContext(unittest.TestCase):
+    def test_content_type_ignores_folders_above_root(self):
+        p = Path("D:/Extras/Movies/Film/a.mkv")
+        self.assertEqual(core.content_type(p), "Extras")
+        self.assertEqual(core.content_type(p, root=Path("D:/Extras/Movies")), "Main")
+        self.assertEqual(core.content_type(Path("D:/Extras/Movies/Film/Scenes/a.mkv"),
+                                           root=Path("D:/Extras/Movies")), "Scenes")
+
+    def test_content_type_file_outside_root_falls_back(self):
+        self.assertEqual(core.content_type(Path("D:/x/Extras/a.mkv"), root=Path("E:/other")), "Extras")
+
+    def test_parse_extras(self):
+        self.assertEqual(core.parse_extras(" Extras, ,Bonus ,"), ["Extras", "Bonus"])
+        self.assertEqual(core.parse_extras(""), [])
+
+    def test_context_picks_deepest_root_and_lists_once(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "tv").mkdir()
+            for n in ("a.mkv", "b.mkv", "a.en.srt"):
+                (root / "tv" / n).write_bytes(b"")
+            ctx = core.ScanContext([root, root / "tv"])
+            self.assertEqual(ctx.root_for(root / "tv" / "a.mkv"), root / "tv")
+            self.assertIsNone(ctx.root_for(Path(d).parent / "elsewhere" / "x.mkv"))
+            first = ctx.listing(root / "tv")
+            self.assertIs(ctx.listing(root / "tv"), first)
+            self.assertEqual(first.subtitles, ["a.en.srt"])
+            self.assertEqual(first.video_stems, {"a", "b"})
+
+    def test_missing_folder_listing_is_empty(self):
+        self.assertEqual(core.read_listing(Path("Z:/definitely/not/here")).subtitles, [])
+
+
 class TestSidecarSubs(unittest.TestCase):
     V = Path("D:/m/Movie (2020).mkv")
 
@@ -171,6 +208,26 @@ class TestSidecarSubs(unittest.TestCase):
         self.assertEqual(r.subs_split[1], ["German", "SRT (external)", "", "", ""])
         self.assertEqual(len(r.subs), len(r.subs_split))
 
+    def test_longer_named_video_owns_its_subs(self):
+        names = ["Movie.mkv", "Movie.Trailer.mkv", "Movie.en.srt", "Movie.Trailer.en.srt"]
+        main = core.sidecar_subs(Path("D:/m/Movie.mkv"), names)
+        trailer = core.sidecar_subs(Path("D:/m/Movie.Trailer.mkv"), names)
+        self.assertEqual([r[0] for r in main], ["English"])
+        self.assertEqual(main[0][2], "")
+        self.assertEqual([r[0] for r in trailer], ["English"])
+        self.assertEqual(len(trailer), 1)
+
+    def test_prefix_overlap_without_listing_still_matches(self):
+        self.assertIsNotNone(core.sidecar_fields(Path("D:/m/Movie.mkv"), "Movie.Trailer.en.srt"))
+
+    def test_ambiguous_codes_need_lower_case(self):
+        v = Path("D:/m/Movie.mkv")
+        self.assertEqual(core.sidecar_fields(v, "Movie.it.srt")[0], "Italian")
+        self.assertEqual(core.sidecar_fields(v, "Movie.It.srt")[:3], ["und", "SRT (external)", "It"])
+        self.assertEqual(core.sidecar_fields(v, "Movie.No.srt")[2], "No")
+        self.assertEqual(core.sidecar_fields(v, "Movie.no.srt")[0], "Norwegian")
+        self.assertEqual(core.sidecar_fields(v, "Movie.EN.srt")[0], "English")
+
     def test_no_siblings_unchanged(self):
         r = core.record_from_tracks(self.V, [NS(track_type="General")])
         self.assertEqual((r.subs, r.subs_split), ([], []))
@@ -205,7 +262,7 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(r.subs, ["en | SRT"])
         vals = r.base_values()
         self.assertEqual(len(vals), len(core.BASE_COLUMNS))
-        self.assertEqual(vals[13:15], [2, 1])
+        self.assertEqual(vals[-1], 2)      # '# Audio' is last; '# Subs' sits before the Sub columns
 
     def test_no_video(self):
         tracks = [NS(track_type="General", format="MPEG-4", duration="60000", overall_bit_rate="1000000"),

@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, TYPE_COLUMN, FileRecord, ScanError
+from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, SUBS_COUNT_COLUMN, TYPE_COLUMN, FileRecord, ScanError
 
 HEADER_FILL = "DDEBF7"
 PADDING = 2          # extra width (chars) so text doesn't touch the gridline
@@ -43,9 +43,11 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
     if opts.split_tracks:
         headers = (base
                    + [f"Audio {i} {f}" for i in range(1, n_aud + 1) for f in AUDIO_FIELDS]
+                   + [SUBS_COUNT_COLUMN]
                    + [f"Sub {i} {f}" for i in range(1, n_sub + 1) for f in SUB_FIELDS])
     else:
-        headers = base + [f"Audio {i}" for i in range(1, n_aud + 1)] + [f"Sub {i}" for i in range(1, n_sub + 1)]
+        headers = (base + [f"Audio {i}" for i in range(1, n_aud + 1)]
+                   + [SUBS_COUNT_COLUMN] + [f"Sub {i}" for i in range(1, n_sub + 1)])
 
     wb = Workbook()
     ws = wb.active
@@ -53,14 +55,15 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
     ws.append(headers)
     for r in records:
         if opts.split_tracks:
-            tracks = (_split_cells(r.audio_split, n_aud, len(AUDIO_FIELDS))
-                      + _split_cells(r.subs_split, n_sub, len(SUB_FIELDS)))
+            audio = _split_cells(r.audio_split, n_aud, len(AUDIO_FIELDS))
+            subs = _split_cells(r.subs_split, n_sub, len(SUB_FIELDS))
         else:
-            tracks = (r.audio + [""] * n_aud)[:n_aud] + (r.subs + [""] * n_sub)[:n_sub]
+            audio = (r.audio + [""] * n_aud)[:n_aud]
+            subs = (r.subs + [""] * n_sub)[:n_sub]
         values = r.base_values()
         if not opts.include_type:
             del values[BASE_COLUMNS.index(TYPE_COLUMN)]
-        ws.append(values + tracks)
+        ws.append(values + audio + [len(r.subs)] + subs)
 
     # Formatting: bold header, freeze panes, filters, sensible widths
     fill = PatternFill("solid", fgColor=HEADER_FILL)
@@ -68,7 +71,7 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
         cell.font = Font(bold=True)
         cell.fill = fill
         cell.alignment = Alignment(vertical="center")
-    ws.freeze_panes = "C2"
+    ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
     autofit_columns(ws, filter_buttons=True)
 

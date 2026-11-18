@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Sequence
 
-from .core import FileRecord, find_files, scan_file
+from .core import FileRecord, ScanContext, find_files
 from .settings import Options
 
 LogFn = Callable[[str], None]
@@ -56,9 +56,14 @@ def run_job(
     *,
     now: datetime | None = None,
     find_fn: Callable[..., Sequence[Path]] = find_files,
-    scan_fn: Callable[[Path, object], FileRecord] = scan_file,
+    scan_fn: Callable[[Path, object], FileRecord] | None = None,
+    output: Path | None = None,
 ) -> JobResult:
-    """Run one report. Never raises for expected failures; returns a JobResult."""
+    """Run one report. Never raises for expected failures; returns a JobResult.
+
+    scan_fn defaults to MediaInfo reading; output overrides the report file path
+    (otherwise it is named from opts and saved in the export folder).
+    """
     # Imported here so a missing openpyxl is reported in the log, not at import time.
     from .excel import ExcelOptions, unique_path, write_workbook
     from .scanner import scan
@@ -78,23 +83,28 @@ def run_job(
             log(f"Skipping missing folder: {f}")
 
     log("Looking for video files...")
-    files = list(find_fn([f for f in folders if os.path.isdir(f)], should_stop=cancel_event.is_set))
+    roots = [f for f in folders if os.path.isdir(f)]
+    files = list(find_fn(roots, should_stop=cancel_event.is_set))
     if cancel_event.is_set():
         return finish(CANCELLED, "Cancelled. No report was written.", files=len(files))
     if not files:
         return finish(NO_FILES, "No video files found in the selected folders.")
     log(f"Found {len(files)} video file(s). Scanning with {opts.workers} worker(s)...")
 
+    if scan_fn is None:
+        scan_fn = ScanContext(roots).scan_file
     result = scan(files, workers=opts.workers, on_progress=progress,
                   cancel_event=cancel_event, extras_folders=opts.extras_folders,
                   scan_fn=scan_fn)
     if result.cancelled or cancel_event.is_set():
         return finish(CANCELLED, "Cancelled. No report was written.", files=len(files))
 
-    export_dir, note = opts.export_dir()
-    if note:
-        log(note)
-    path = unique_path(export_dir / opts.report_name(now))
+    if output is None:
+        export_dir, note = opts.export_dir()
+        if note:
+            log(note)
+        output = export_dir / opts.report_name(now)
+    path = unique_path(output)
     try:
         out = write_workbook(result.records, result.errors, path,
                              ExcelOptions(max_audio=opts.max_audio, max_subs=opts.max_subs,

@@ -5,6 +5,7 @@ Nothing in here knows about Excel, threads or the GUI.
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
@@ -14,13 +15,14 @@ VIDEO_EXTS = {".mkv", ".mp4", ".m4v", ".avi", ".mov", ".ts", ".m2ts", ".wmv", ".
 # Folder names (case-insensitive) that mark bonus content.
 DEFAULT_EXTRAS_FOLDERS = ("extras", "featurettes", "scenes")
 
-# Fixed columns, in output order. Audio N / Sub N columns follow these.
+# Fixed columns, in output order. Audio N columns follow these, then '# Subs', then Sub N.
 BASE_COLUMNS = [
     "Folder", "File", "Type", "Container", "Size (GB)", "Duration (min)",
-    "Video Codec", "Resolution", "Aspect", "Frame Rate", "Bit Depth", "HDR",
-    "Video Bitrate", "# Audio", "# Subs",
+    "Video Codec", "Resolution", "Aspect", "Frame Rate", "Bit Depth", "Dynamic Range",
+    "Video Bitrate", "# Audio",
 ]
 
+SUBS_COUNT_COLUMN = "# Subs"   # sits between the Audio N and Sub N columns
 TYPE_COLUMN = "Type"   # Main / Extras / ... ; omitted from reports when no extras folders are defined
 
 # Per-track columns used when tracks are split into separate fields
@@ -56,7 +58,7 @@ class FileRecord:
             self.folder, self.file, self.type, self.container, self.size_gb,
             self.duration_min, self.video_codec, self.resolution, self.aspect,
             self.frame_rate, self.bit_depth, self.hdr, self.video_bitrate,
-            len(self.audio), len(self.subs),
+            len(self.audio),
         ]
 
 
@@ -84,10 +86,26 @@ def find_files(folders: Iterable[str | os.PathLike],
     return sorted(files)
 
 
-def content_type(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS) -> str:
-    """'Extras' / 'Featurettes' / 'Scenes' if any parent folder matches (nearest wins), else 'Main'."""
+def parse_extras(text: str) -> list[str]:
+    """'Extras, Featurettes' -> ['Extras', 'Featurettes'] (blank entries dropped)."""
+    return [e.strip() for e in text.split(",") if e.strip()]
+
+
+def content_type(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,
+                 root: Path | None = None) -> str:
+    """'Extras' / 'Featurettes' / 'Scenes' if a parent folder matches (nearest wins), else 'Main'.
+
+    With `root` (the scan folder the file was found under) only folders below it are
+    considered, so a library that merely lives inside a folder called 'Extras' isn't mislabelled.
+    """
     wanted = {e.strip().lower() for e in extras_folders if e.strip()}
-    for part in reversed(path.parent.parts):
+    parent = path.parent
+    if root is not None:
+        try:
+            parent = parent.relative_to(root)
+        except ValueError:
+            pass
+    for part in reversed(parent.parts):
         if part.lower() in wanted:
             return part.title()
     return "Main"
@@ -122,9 +140,12 @@ def channels(track) -> str:
 
 def kbps(value) -> str:
     try:
-        return f"{round(int(float(str(value).split()[0])) / 1000):,} kb/s"
+        bps = int(float(str(value).split()[0]))
     except (TypeError, ValueError):
         return ""
+    if bps <= 0:
+        return ""
+    return f"{max(1, round(bps / 1000)):,} kb/s"
 
 
 def yes(v) -> bool:
@@ -212,13 +233,30 @@ _LANGUAGES = {
     "Romanian": "ro rum ron romanian", "Ukrainian": "uk ukr ukrainian",
 }
 LANGUAGE_TOKENS = {tok: name for name, toks in _LANGUAGES.items() for tok in toks.split()}
+# Codes that are also common words: only treated as a language when written in lower case
+# ('Movie.it.srt' is Italian, 'Movie.It.srt' is a name).
+AMBIGUOUS_CODES = {"no", "it", "id", "he", "hi"}
 
 
-def sidecar_fields(video: Path, filename: str, has_idx: bool = False) -> list[str] | None:
+class FolderListing:
+    """What sidecar matching needs to know about one folder, built once and shared by its videos."""
+
+    def __init__(self, names: Iterable[str]):
+        names = list(names)
+        suffix = {n: Path(n).suffix.lower() for n in names}
+        self.video_stems = frozenset(Path(n).stem.lower() for n in names if suffix[n] in VIDEO_EXTS)
+        self.idx_stems = frozenset(Path(n).stem.lower() for n in names if suffix[n] == ".idx")
+        self.subtitles = sorted((n for n in names if suffix[n] in SIDECAR_FORMATS), key=str.lower)
+
+
+def sidecar_fields(video: Path, filename: str, has_idx: bool = False,
+                   other_videos: "frozenset[str] | set[str]" = frozenset()) -> list[str] | None:
     """SUB_FIELDS values for `filename` if it is a subtitle file belonging to `video`, else None.
 
     A sidecar is '<video stem>[.tags].<ext>', e.g. Movie.en.forced.srt. Tags that name a
     language set the language, 'forced'/'default' set the flags, anything else becomes the Name.
+    `other_videos` (lower-case stems of the folder's videos) lets the longest matching video win:
+    'Movie.Trailer.en.srt' belongs to 'Movie.Trailer.mkv', not to 'Movie.mkv'.
     """
     p = Path(filename)
     fmt = SIDECAR_FORMATS.get(p.suffix.lower())
@@ -227,6 +265,10 @@ def sidecar_fields(video: Path, filename: str, has_idx: bool = False) -> list[st
         return None
     rest = p.stem[len(stem):]
     if rest and not rest.startswith("."):
+        return None
+    full = p.stem.lower()
+    cuts = [i for i, c in enumerate(full) if c == "."] + [len(full)]
+    if any(full[:i] in other_videos for i in cuts if i > len(stem)):
         return None
     if p.suffix.lower() == ".sub" and has_idx:
         fmt = "VobSub"
@@ -237,7 +279,7 @@ def sidecar_fields(video: Path, filename: str, has_idx: bool = False) -> list[st
             forced = True
         elif low == "default":
             default = True
-        elif not language and low in LANGUAGE_TOKENS:
+        elif not language and low in LANGUAGE_TOKENS and not (low in AMBIGUOUS_CODES and tok != low):
             language = LANGUAGE_TOKENS[low]
         else:
             name.append(tok)
@@ -245,13 +287,13 @@ def sidecar_fields(video: Path, filename: str, has_idx: bool = False) -> list[st
             "Forced" if forced else "", "Default" if default else ""]
 
 
-def sidecar_subs(video: Path, names: Iterable[str]) -> list[list[str]]:
-    """SUB_FIELDS rows for every subtitle file in `names` (a directory listing) that belongs to `video`."""
-    names = sorted(names, key=str.lower)
-    idx_stems = {Path(n).stem.lower() for n in names if Path(n).suffix.lower() == ".idx"}
+def sidecar_subs(video: Path, names: "Iterable[str] | FolderListing") -> list[list[str]]:
+    """SUB_FIELDS rows for every subtitle file in a folder listing that belongs to `video`."""
+    listing = names if isinstance(names, FolderListing) else FolderListing(names)
     out = []
-    for n in names:
-        fields = sidecar_fields(video, n, has_idx=Path(n).stem.lower() in idx_stems)
+    for n in listing.subtitles:
+        fields = sidecar_fields(video, n, has_idx=Path(n).stem.lower() in listing.idx_stems,
+                                other_videos=listing.video_stems)
         if fields:
             out.append(fields)
     return out
@@ -274,11 +316,13 @@ def hdr(v) -> str:
 # --------------------------------------------------------------------------- record building
 
 def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,
-                       sibling_names: Iterable[str] = ()) -> FileRecord:
+                       sibling_names: "Iterable[str] | FolderListing" = (),
+                       root: Path | None = None) -> FileRecord:
     """Build a FileRecord from a list of MediaInfo-like track objects (testable without MediaInfo).
 
-    sibling_names: file names in the video's folder; subtitle files among them are added after
-    the embedded subtitle tracks.
+    sibling_names: file names in the video's folder (or a FolderListing of them); subtitle files
+    among them are added after the embedded subtitle tracks.
+    root: the scan folder the file was found under (limits which folders count as 'extras').
     """
     gen = next((t for t in tracks if t.track_type == "General"), None)
     vids = [t for t in tracks if t.track_type == "Video"]
@@ -301,7 +345,7 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     return FileRecord(
         folder=str(path.parent),
         file=path.name,
-        type=content_type(path, extras_folders),
+        type=content_type(path, extras_folders, root),
         container=g(gen, "format"),
         size_gb=size_gb,
         duration_min=mins,
@@ -319,12 +363,54 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     )
 
 
-def scan_file(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS) -> FileRecord:
+def scan_file(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS,
+              root: Path | None = None, listing: "FolderListing | None" = None) -> FileRecord:
     """Read one file with MediaInfo. Raises on unreadable files."""
     from pymediainfo import MediaInfo  # imported lazily so the rest of core works without it
     mi = MediaInfo.parse(str(path))
+    if listing is None:
+        listing = read_listing(path.parent)
+    return record_from_tracks(path, mi.tracks, extras_folders, listing, root)
+
+
+def read_listing(folder: Path) -> FolderListing:
     try:
-        siblings = os.listdir(path.parent)
+        return FolderListing(os.listdir(folder))
     except OSError:
-        siblings = []
-    return record_from_tracks(path, mi.tracks, extras_folders, siblings)
+        return FolderListing(())
+
+
+class ScanContext:
+    """State shared by the worker threads of one scan: the scan roots and a per-folder listing cache.
+
+    Each folder is listed once however many videos it holds (matters on network shares).
+    """
+
+    def __init__(self, roots: Iterable[str | os.PathLike] = ()):
+        self.roots = [Path(r) for r in roots]
+        self._listings: dict[Path, FolderListing] = {}
+        self._lock = threading.Lock()
+
+    def root_for(self, path: Path) -> Path | None:
+        """The deepest scan root containing `path`, or None."""
+        best = None
+        for r in self.roots:
+            try:
+                path.relative_to(r)
+            except ValueError:
+                continue
+            if best is None or len(r.parts) > len(best.parts):
+                best = r
+        return best
+
+    def listing(self, folder: Path) -> FolderListing:
+        with self._lock:
+            cached = self._listings.get(folder)
+        if cached is None:
+            cached = read_listing(folder)          # outside the lock: may be slow
+            with self._lock:
+                cached = self._listings.setdefault(folder, cached)
+        return cached
+
+    def scan_file(self, path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLDERS) -> FileRecord:
+        return scan_file(path, extras_folders, self.root_for(path), self.listing(path.parent))

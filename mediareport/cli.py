@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime
+import threading
+from pathlib import Path
 
-from .core import DEFAULT_EXTRAS_FOLDERS, find_files
-from .paths import resolve_export_dir
+from .core import DEFAULT_EXTRAS_FOLDERS, parse_extras
+from .job import DONE, run_job
+from .settings import Options
 
 USAGE = """\
 Scan folders of movie/TV rips and write an Excel report with one row per file
@@ -33,39 +35,21 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     try:
-        from .excel import ExcelOptions, write_workbook
-        from .scanner import scan
-        import pymediainfo  # noqa: F401  (fail early with a clear message)
+        import openpyxl  # noqa: F401  (fail early with a clear message)
+        import pymediainfo  # noqa: F401
     except ImportError as e:
         print(f"Missing package: {e.name}. Run: py -m pip install pymediainfo openpyxl", file=sys.stderr)
-        return 1
-
-    files = find_files(args.folders)
-    if not files:
-        print("No video files found.", file=sys.stderr)
         return 1
 
     def progress(done, total, path, err):
         print(f"[{done}/{total}] {path.name}" + (f"  !! {err}" if err else ""), flush=True)
 
-    extras = [e for e in args.extras.split(",") if e.strip()]
-    result = scan(files, workers=args.workers, on_progress=progress, extras_folders=extras)
-
-    output = args.output
-    if not output:
-        stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        export_dir, note = resolve_export_dir("")
-        if note:
-            print(note)
-        output = export_dir / f"media_report_{stamp}.xlsx"
-    out = write_workbook(result.records, result.errors, output,
-                         ExcelOptions(max_audio=args.max_audio, max_subs=args.max_subs,
-                                    split_tracks=args.split_tracks,
-                                    include_type=bool(extras)))
-    n_err = len(result.errors)
-    print(f"\nDone: {len(result.records)} files -> {out}"
-          + (f" ({n_err} errors, see 'Errors' sheet)" if n_err else ""))
-    return 0
+    opts = Options(folders=list(args.folders), max_audio=args.max_audio, max_subs=args.max_subs,
+                   split_tracks=args.split_tracks, extras_folders=parse_extras(args.extras),
+                   workers=args.workers)
+    res = run_job(opts, log=print, progress=progress, cancel_event=threading.Event(),
+                  output=Path(args.output) if args.output else None)
+    return 0 if res.status == DONE else 1
 
 
 if __name__ == "__main__":

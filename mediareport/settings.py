@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from .core import DEFAULT_EXTRAS_FOLDERS
+from .core import DEFAULT_EXTRAS_FOLDERS, parse_extras
 from .paths import app_dir, is_writable_dir, resolve_export_dir, user_config_dir
 
 INI_NAME = "MediaReport.ini"
@@ -80,7 +80,7 @@ def load(path: Path | None = None) -> Options:
         pass
     opts.workers = _int(cp, "workers", opts.workers, minimum=1)
     if "extras_folders" in s:
-        opts.extras_folders = [e.strip() for e in s["extras_folders"].split(",") if e.strip()]
+        opts.extras_folders = parse_extras(s["extras_folders"])
     return opts
 
 

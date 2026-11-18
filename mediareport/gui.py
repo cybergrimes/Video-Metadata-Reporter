@@ -5,6 +5,7 @@ queue.Queue that the Tk thread drains with after().
 """
 from __future__ import annotations
 
+import os
 import queue
 import sys
 import threading
@@ -15,6 +16,8 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from . import APP_NAME, __version__, settings
+from .core import parse_extras
+from .folderpicker import ask_directories
 from .job import CANCELLED, DONE, JobResult, run_job
 from .paths import open_path
 from .settings import Options
@@ -200,7 +203,7 @@ class App:
             max_audio=self._int(self.var_audio, min(o.max_audio, MAX_TRACK_COLS), 0, MAX_TRACK_COLS),
             max_subs=self._int(self.var_subs, min(o.max_subs, MAX_TRACK_COLS), 0, MAX_TRACK_COLS),
             split_tracks=bool(self.var_split.get()),
-            extras_folders=[e.strip() for e in self.var_extras.get().split(",") if e.strip()],
+            extras_folders=parse_extras(self.var_extras.get()),
             workers=self._int(self.var_workers, min(o.workers, MAX_WORKERS), 1, MAX_WORKERS),
         )
         return new
@@ -216,13 +219,16 @@ class App:
 
     def add_folder(self) -> None:
         start = self.folder_list.get("end") or None
-        d = filedialog.askdirectory(parent=self.root, title="Add folder to scan",
-                                    initialdir=start, mustexist=True)
-        if not d:
-            return
-        d = str(Path(d))
-        if d not in self.folder_list.get(0, "end"):
-            self.folder_list.insert("end", d)
+        chosen = ask_directories(self.root, "Add folders to scan", initialdir=start)
+        have = {os.path.normcase(d) for d in self.folder_list.get(0, "end")}
+        added = False
+        for d in chosen:
+            d = str(Path(d))
+            if os.path.normcase(d) not in have:
+                have.add(os.path.normcase(d))
+                self.folder_list.insert("end", d)
+                added = True
+        if added:
             self._save_settings()
 
     def remove_folders(self) -> None:

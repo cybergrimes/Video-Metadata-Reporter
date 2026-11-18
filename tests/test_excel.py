@@ -19,12 +19,14 @@ class TestWorkbook(unittest.TestCase):
     def test_header_and_padding(self):
         wb = excel.build_workbook([rec("a", 1, 3), rec("b", 2, 0)], [])
         r = rows(wb["Library"])
-        self.assertEqual(r[0], BASE_COLUMNS + ["Audio 1", "Audio 2", "Sub 1", "Sub 2", "Sub 3"])
+        self.assertEqual(r[0], BASE_COLUMNS + ["Audio 1", "Audio 2", "# Subs", "Sub 1", "Sub 2", "Sub 3"])
         n = len(BASE_COLUMNS)
-        self.assertEqual(r[1][n:], ["a0", "", "s0", "s1", "s2"])
-        self.assertEqual(r[2][n:], ["a0", "a1", "", "", ""])
+        self.assertEqual(r[1][n:], ["a0", "", 3, "s0", "s1", "s2"])
+        self.assertEqual(r[2][n:], ["a0", "a1", 0, "", "", ""])
         self.assertEqual(r[1][BASE_COLUMNS.index("# Audio")], 1)
-        self.assertEqual(r[1][BASE_COLUMNS.index("# Subs")], 3)
+        self.assertEqual(r[1][r[0].index("# Subs")], 3)
+        self.assertEqual(r[0].index("# Subs"), r[0].index("Audio 2") + 1)
+        self.assertEqual(r[0].index("Sub 1"), r[0].index("# Subs") + 1)
 
     def test_padding_is_empty_string_in_memory(self):
         ws = excel.build_workbook([rec("a", 1, 0), rec("b", 2, 0)], [])["Library"]
@@ -33,18 +35,17 @@ class TestWorkbook(unittest.TestCase):
     def test_caps_keep_true_count(self):
         wb = excel.build_workbook([rec("a", 5, 4)], [], excel.ExcelOptions(max_audio=2, max_subs=1))
         r = rows(wb["Library"])
-        self.assertEqual(r[0][len(BASE_COLUMNS):], ["Audio 1", "Audio 2", "Sub 1"])
+        self.assertEqual(r[0][len(BASE_COLUMNS):], ["Audio 1", "Audio 2", "# Subs", "Sub 1"])
         self.assertEqual(r[1][BASE_COLUMNS.index("# Audio")], 5)
-        self.assertEqual(r[1][BASE_COLUMNS.index("# Subs")], 4)
-        self.assertEqual(r[1][len(BASE_COLUMNS):], ["a0", "a1", "s0"])
+        self.assertEqual(r[1][len(BASE_COLUMNS):], ["a0", "a1", 4, "s0"])
 
     def test_cap_larger_than_actual(self):
         wb = excel.build_workbook([rec("a", 1, 1)], [], excel.ExcelOptions(max_audio=9, max_subs=9))
-        self.assertEqual(rows(wb["Library"])[0][len(BASE_COLUMNS):], ["Audio 1", "Sub 1"])
+        self.assertEqual(rows(wb["Library"])[0][len(BASE_COLUMNS):], ["Audio 1", "# Subs", "Sub 1"])
 
     def test_formatting(self):
         ws = excel.build_workbook([rec("a", 1, 1)], [])["Library"]
-        self.assertEqual(ws.freeze_panes, "C2")
+        self.assertEqual(ws.freeze_panes, "A2")
         self.assertTrue(ws.auto_filter.ref)
         self.assertTrue(all(c.font.bold for c in ws[1]))
 
@@ -57,7 +58,7 @@ class TestWorkbook(unittest.TestCase):
 
     def test_zero_records(self):
         wb = excel.build_workbook([], [])
-        self.assertEqual(rows(wb["Library"]), [BASE_COLUMNS])
+        self.assertEqual(rows(wb["Library"]), [BASE_COLUMNS + ["# Subs"]])
         wb = excel.build_workbook([], [ScanError("p", "m")])
         self.assertIn("Errors", wb.sheetnames)
 
@@ -75,7 +76,7 @@ class TestIncludeType(unittest.TestCase):
         out = rows(ws)
         self.assertEqual(out[0][:4], ["Folder", "File", "Container", "Size (GB)"])
         self.assertNotIn("Type", out[0])
-        self.assertEqual(len(out[0]), len(BASE_COLUMNS) - 1 + 1)
+        self.assertEqual(len(out[0]), len(BASE_COLUMNS) - 1 + 1 + 1)
         self.assertEqual(out[1][:3], ["D:/x", "a", None])      # Container is None for this fake record
         self.assertNotIn("Extras", out[1])
 
@@ -85,7 +86,7 @@ class TestIncludeType(unittest.TestCase):
     def test_split_and_freeze_unaffected(self):
         ws = excel.build_workbook([rec("a", 1, 1)], [],
                                   excel.ExcelOptions(include_type=False, split_tracks=True))["Library"]
-        self.assertEqual(ws.freeze_panes, "C2")
+        self.assertEqual(ws.freeze_panes, "A2")
         self.assertNotIn("Type", rows(ws)[0])
 
 
@@ -103,7 +104,7 @@ class TestSplitTracks(unittest.TestCase):
         r = rows(self.build())
         n = len(BASE_COLUMNS)
         expect = ([f"Audio {i} {f}" for i in (1, 2) for f in core.AUDIO_FIELDS]
-                  + [f"Sub 1 {f}" for f in core.SUB_FIELDS])
+                  + ["# Subs"] + [f"Sub 1 {f}" for f in core.SUB_FIELDS])
         self.assertEqual(r[0][n:], expect)
 
     def test_values_and_padding(self):
@@ -117,12 +118,12 @@ class TestSplitTracks(unittest.TestCase):
     def test_caps_and_counts(self):
         ws = self.build(max_audio=1, max_subs=0)
         r = rows(ws)
-        self.assertEqual(len(r[0]), len(BASE_COLUMNS) + 6 + 5)
+        self.assertEqual(len(r[0]), len(BASE_COLUMNS) + 6 + 1 + 5)
         self.assertEqual(r[1][BASE_COLUMNS.index("# Audio")], 2)
 
     def test_off_by_default(self):
         ws = excel.build_workbook([FileRecord(folder="D:/x", file="a", audio=["m"])], [])["Library"]
-        self.assertEqual(rows(ws)[0][-1], "Audio 1")
+        self.assertEqual(rows(ws)[0][-2:], ["Audio 1", "# Subs"])
 
 
 class TestAutofit(unittest.TestCase):
@@ -139,7 +140,7 @@ class TestAutofit(unittest.TestCase):
 
     def test_header_gets_room_for_filter_button(self):
         ws = excel.build_workbook([rec("a", 0, 0)], [])["Library"]
-        self.assertEqual(self.width(ws, "HDR"), len("HDR") + excel.FILTER_BUTTON + excel.PADDING)
+        self.assertEqual(self.width(ws, "Dynamic Range"), len("Dynamic Range") + excel.FILTER_BUTTON + excel.PADDING)
 
     def test_all_rows_measured(self):
         recs = [rec(f"f{i}", 0, 0) for i in range(600)]
