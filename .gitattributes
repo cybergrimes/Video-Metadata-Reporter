@@ -1,0 +1,6 @@
+# Normalize line endings in the repo; Windows scripts keep CRLF on checkout
+* text=auto
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.py  text eol=lf
+*.pyw text eol=lf
