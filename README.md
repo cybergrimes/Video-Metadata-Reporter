@@ -67,8 +67,6 @@ py video_metadata_reporter.py "D:\Movies" "D:\TV" -o out.xlsx --max-audio 3 --ma
 
 Other flags: `--workers`, `--extras`, `--split-tracks`, `--hide-columns`. Run `py video_metadata_reporter.py --help` for the full list.
 
-On Linux, install the MediaInfo library first (for example `libmediainfo0v5` on Debian/Ubuntu).
-
 ## Tests
 
 ```
