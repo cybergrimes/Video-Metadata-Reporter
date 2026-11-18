@@ -117,7 +117,7 @@ class App:
             sp = ttk.Spinbox(nums, from_=lo, to=hi, width=4, textvariable=var)
             sp.grid(row=0, column=col * 2 + 1, sticky="w")
             self.spinboxes.append(sp)
-        ttk.Label(of, text="0 columns = as many as needed. Use fewer files at once for slow network drives.",
+        ttk.Label(of, text="Tracks beyond the maximum are left out of the report (0 = no maximum).",
                   foreground="gray").grid(row=3, column=0, columnspan=4, sticky="w")
 
         ttk.Label(of, text="Extras folder names:").grid(row=4, column=0, sticky="w", pady=(PAD, 0))
