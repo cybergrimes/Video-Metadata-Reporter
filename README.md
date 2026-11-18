@@ -2,6 +2,8 @@
 
 Scan a library of movie and TV rips and export the details MediaInfo reports (video, audio, subtitles) to an Excel workbook, one row per video file.
 
+Media Report uses the [MediaInfo](https://mediaarea.net/en/MediaInfo) library but is an independent project, not affiliated with or endorsed by MediaArea.net SARL. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ![platform: Windows](https://img.shields.io/badge/platform-Windows-blue)
 
 ## Quick start (Windows)
@@ -63,7 +65,7 @@ Command line (no GUI; uses the same scan and report code as the app, and never o
 py media_report.py "D:\Movies" "D:\TV" -o out.xlsx --max-audio 3 --max-subs 6
 ```
 
-Other flags: `--workers`, `--extras`.
+Other flags: `--workers`, `--extras`, `--split-tracks`, `--hide-columns`. Run `py media_report.py --help` for the full list.
 
 On Linux, install the MediaInfo library first (for example `libmediainfo0v5` on Debian/Ubuntu).
 
@@ -103,3 +105,7 @@ media_report.py   CLI launcher
 ```
 
 All logic lives in the package; `gui.py` only calls it, so the interface can be swapped without touching the scanner.
+
+## Licence
+
+See [LICENSE](LICENSE) for this project and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the libraries it uses and bundles.
