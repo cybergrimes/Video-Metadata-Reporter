@@ -407,12 +407,15 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
     )
 
 
+class MediaInfoUnavailable(RuntimeError):
+    """The MediaInfo library we ship can't be used. The message is shown to the user as is."""
+
+
 @dataclass(frozen=True)
 class MediaInfoChoice:
-    """Which MediaInfo library scans use. `library` is passed to pymediainfo as library_file."""
-    library: str | None = None   # vendored DLL path, or None = pymediainfo's own bundled library
+    """The MediaInfo library scans use. `library` is passed to pymediainfo as library_file."""
+    library: str | None = None   # vendored DLL path; None only off Windows (pymediainfo's own library)
     version: str = ""            # e.g. "26.10"; empty if it couldn't be read
-    warning: str = ""            # set when we had to fall back to the older bundled library
 
 
 _choice: MediaInfoChoice | None = None
@@ -446,32 +449,39 @@ def _vendored_version() -> str:
 
 
 def resolve_mediainfo(refresh: bool = False) -> MediaInfoChoice:
-    """Pick the MediaInfo library once per run: the vendored one, else pymediainfo's with a warning."""
+    """Load the MediaInfo library we ship once per run, or raise MediaInfoUnavailable.
+
+    On Windows that is vendor/mediainfo/MediaInfo.dll, and its version must match vendor/mediainfo/VERSION.
+    There is no fallback to pymediainfo's own copy. Off Windows pymediainfo's library is used as is.
+    """
     global _choice
     with _choice_lock:
         if _choice is not None and not refresh:
             return _choice
         from . import paths
-        dll = paths.vendored_mediainfo()
-        if dll is not None:
-            version, error = _probe_mediainfo(str(dll))
-            if not error:
-                _choice = MediaInfoChoice(str(dll), version)
-                return _choice
-        # Missing or unloadable. Off Windows pymediainfo's own library is the normal one: no warning.
-        expected = _vendored_version() if sys.platform == "win32" else ""
-        version, _error = _probe_mediainfo(None)
-        warning = ""
         if sys.platform == "win32":
-            what = f"MediaInfo {expected}" if expected else "MediaInfo"
-            older = f"the older MediaInfo {version}" if version else "the older bundled MediaInfo"
-            warning = f"WARNING: {what} couldn't be loaded; used {older}."
-        _choice = MediaInfoChoice(None, version, warning)
+            expected = _vendored_version()
+            name = f"MediaInfo {expected}" if expected else "MediaInfo"
+            dll = paths.vendored_mediainfo()
+            if dll is None:
+                raise MediaInfoUnavailable(
+                    f"{name} isn't available: {paths.vendored_mediainfo_dir() / 'MediaInfo.dll'} is missing.")
+            version, error = _probe_mediainfo(str(dll))
+            if error:
+                raise MediaInfoUnavailable(f"{name} couldn't be loaded from {dll}: {error}")
+            if expected and version and version != expected:
+                raise MediaInfoUnavailable(f"Expected {name} but {dll} is MediaInfo {version}.")
+            _choice = MediaInfoChoice(str(dll), version)
+        else:
+            version, error = _probe_mediainfo(None)
+            if error:
+                raise MediaInfoUnavailable(f"MediaInfo couldn't be loaded: {error}")
+            _choice = MediaInfoChoice(None, version)
         return _choice
 
 
 def mediainfo_library() -> str | None:
-    """Path of the MediaInfo library to use, or None for pymediainfo's bundled one."""
+    """Path of the MediaInfo library to use (None = pymediainfo's own, off Windows). May raise MediaInfoUnavailable."""
     return resolve_mediainfo().library
 
 

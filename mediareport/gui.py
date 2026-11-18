@@ -16,7 +16,8 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from . import APP_NAME, __version__, settings
-from .core import AUDIO_GROUP, OPTIONAL_COLUMNS, SUBS_GROUP, normalize_hidden_columns, parse_extras
+from .core import (AUDIO_GROUP, OPTIONAL_COLUMNS, SUBS_GROUP, MediaInfoUnavailable, normalize_hidden_columns,
+                   parse_extras, resolve_mediainfo)
 from .folderpicker import ask_directories
 from .job import CANCELLED, DONE, JobResult, run_job
 from .paths import open_path
@@ -357,6 +358,11 @@ class App:
                                  + "\n\nInstall with:\npy -m pip install " + " ".join(missing),
                                  parent=self.root)
             return
+        try:
+            resolve_mediainfo()
+        except MediaInfoUnavailable as e:
+            messagebox.showerror(APP_NAME, str(e), parent=self.root)
+            return
         self._save_settings()
         if not self.opts.folders:
             messagebox.showinfo(APP_NAME, "Add at least one folder to scan.", parent=self.root)
@@ -379,7 +385,6 @@ class App:
             try:
                 res = run_job(opts,
                               log=lambda m: q.put(("log", m)),
-                              warn=lambda m: q.put(("log_error", m)),
                               progress=lambda d, t, p, e: q.put(("progress", d, t, p, e)),
                               cancel_event=cancel)
             except Exception:

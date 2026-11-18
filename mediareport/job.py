@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Sequence
 
-from .core import FileRecord, ScanContext, find_files, resolve_mediainfo
+from .core import FileRecord, MediaInfoUnavailable, ScanContext, find_files, resolve_mediainfo
 from .settings import Options
 
 LogFn = Callable[[str], None]
@@ -58,27 +58,30 @@ def run_job(
     find_fn: Callable[..., Sequence[Path]] = find_files,
     scan_fn: Callable[[Path, object], FileRecord] | None = None,
     output: Path | None = None,
-    warn: LogFn | None = None,
 ) -> JobResult:
     """Run one report. Never raises for expected failures; returns a JobResult.
 
     scan_fn defaults to MediaInfo reading; output overrides the report file path
-    (otherwise it is named from opts and saved in the export folder). warn, if given,
-    receives warnings (shown prominently by the GUI); otherwise they go to log.
+    (otherwise it is named from opts and saved in the export folder). With the default
+    scan_fn the shipped MediaInfo must load, or the job fails straight away.
     """
     # Imported here so a missing openpyxl is reported in the log, not at import time.
     from .excel import ExcelOptions, unique_path, write_workbook
     from .scanner import scan
 
     start = time.monotonic()
-    late_warning = ""   # printed after the final message so it is the last thing in the log
 
     def finish(status: str, message: str, **kw) -> JobResult:
         res = JobResult(status=status, message=message, seconds=time.monotonic() - start, **kw)
         log(message)
-        if late_warning:
-            (warn or log)(late_warning)
         return res
+
+    choice = None
+    if scan_fn is None:
+        try:
+            choice = resolve_mediainfo()
+        except MediaInfoUnavailable as e:
+            return finish(FAILED, str(e))
 
     folders = [f for f in opts.folders if f.strip()]
     if not folders:
@@ -101,8 +104,6 @@ def run_job(
     log(f"Found {len(files)} video file(s). Scanning with {opts.workers} worker(s)...")
 
     if scan_fn is None:
-        choice = resolve_mediainfo()
-        late_warning = choice.warning
         log(f"Using MediaInfo {choice.version}." if choice.version else "Using MediaInfo.")
         scan_fn = ScanContext(roots).scan_file
     result = scan(files, workers=opts.workers, on_progress=progress,

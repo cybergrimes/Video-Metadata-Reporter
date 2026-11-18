@@ -145,35 +145,33 @@ class TestFormatDuration(unittest.TestCase):
         self.assertEqual(job.format_duration(3725), "1h 02m 05s")
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestMediaInfoRequired(JobTestBase):
+    """The default scan needs the shipped MediaInfo: it logs the version, or fails before doing any work."""
 
-
-class TestMediaInfoWarning(JobTestBase):
-    """The default scan reports which MediaInfo is used and repeats a fallback warning at the very end."""
-
-    def run_default_scan(self, choice, **kw):
+    def run_default_scan(self, resolve):
         class FakeCtx:
             def __init__(self, roots): pass
             def scan_file(self, path, extras): return fake_scan(path, extras)
-        with mock.patch.object(job, "resolve_mediainfo", return_value=choice), \
-                mock.patch.object(job, "ScanContext", FakeCtx):
+        with mock.patch.object(job, "resolve_mediainfo", resolve), mock.patch.object(job, "ScanContext", FakeCtx):
             return job.run_job(self.opts(), self.logs.append, lambda *a: None, self.cancel,
-                               now=NOW, scan_fn=None, **kw)
+                               now=NOW, scan_fn=None)
 
-    def test_normal_run_logs_version_and_no_warning(self):
+    def test_logs_the_version_in_use(self):
         from mediareport.core import MediaInfoChoice
-        self.run_default_scan(MediaInfoChoice("x.dll", "26.10"))
-        self.assertIn("Using MediaInfo 26.10.", self.logs)
-        self.assertFalse(any(m.startswith("WARNING") for m in self.logs))
-
-    def test_fallback_warning_is_the_last_line(self):
-        from mediareport.core import MediaInfoChoice
-        res = self.run_default_scan(MediaInfoChoice(None, "24.12", "WARNING: older MediaInfo used"))
+        res = self.run_default_scan(lambda: MediaInfoChoice("x.dll", "26.10"))
         self.assertEqual(res.status, job.DONE)
-        self.assertIn("Using MediaInfo 24.12.", self.logs)
-        self.assertEqual(self.logs[-1], "WARNING: older MediaInfo used")
-        self.assertTrue(self.logs[-2].startswith("Done:"))
+        self.assertIn("Using MediaInfo 26.10.", self.logs)
+
+    def test_unavailable_fails_immediately_with_the_message(self):
+        from mediareport.core import MediaInfoUnavailable
+
+        def boom():
+            raise MediaInfoUnavailable("MediaInfo 26.10 isn't available: nope")
+        res = self.run_default_scan(boom)
+        self.assertEqual(res.status, job.FAILED)
+        self.assertEqual(res.message, "MediaInfo 26.10 isn't available: nope")
+        self.assertEqual(self.logs, ["MediaInfo 26.10 isn't available: nope"])   # nothing was scanned
+        self.assertEqual(self.xlsx(), [])
 
     def test_fake_scan_runs_do_not_resolve_mediainfo(self):
         with mock.patch.object(job, "resolve_mediainfo") as r:
@@ -181,10 +179,6 @@ class TestMediaInfoWarning(JobTestBase):
         r.assert_not_called()
         self.assertFalse(any("MediaInfo" in m for m in self.logs))
 
-    def test_warning_goes_to_warn_callback_when_given(self):
-        from mediareport.core import MediaInfoChoice
-        warned = []
-        self.run_default_scan(MediaInfoChoice(None, "24.12", "WARNING: older MediaInfo used"), warn=warned.append)
-        self.assertEqual(warned, ["WARNING: older MediaInfo used"])
-        self.assertFalse(any(m.startswith("WARNING") for m in self.logs))
-        self.assertTrue(self.logs[-1].startswith("Done:"))
+
+if __name__ == "__main__":
+    unittest.main()

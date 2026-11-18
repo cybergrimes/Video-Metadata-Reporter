@@ -289,10 +289,6 @@ class TestRecord(unittest.TestCase):
         self.assertEqual((r.audio, r.subs, r.hdr), ([], [], ""))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestCleanWritingApp(unittest.TestCase):
     def test_keeps_name_and_version_only(self):
         cases = {
@@ -390,7 +386,7 @@ class TestCleanWritingApp(unittest.TestCase):
 
 
 class TestResolveMediaInfo(unittest.TestCase):
-    """Library choice: vendored DLL first, else pymediainfo's own with a warning. No real DLL is loaded."""
+    """The shipped MediaInfo is required on Windows (no fallback). No real DLL is loaded here."""
 
     def setUp(self):
         from unittest import mock
@@ -399,53 +395,84 @@ class TestResolveMediaInfo(unittest.TestCase):
         self.addCleanup(setattr, core, "_choice", None)
 
     def resolve(self, vendored, probe, platform="win32", expected="26.10"):
-        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=vendored), \
-                self._mock.patch.object(core, "_probe_mediainfo", side_effect=probe), \
-                self._mock.patch.object(core, "_vendored_version", return_value=expected), \
-                self._mock.patch.object(core.sys, "platform", platform):
+        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=vendored),                 self._mock.patch("mediareport.paths.vendored_mediainfo_dir", return_value=Path("v")),                 self._mock.patch.object(core, "_probe_mediainfo", side_effect=probe),                 self._mock.patch.object(core, "_vendored_version", return_value=expected),                 self._mock.patch.object(core.sys, "platform", platform):
             return core.resolve_mediainfo(refresh=True)
 
     def test_vendored_used_when_it_loads(self):
         c = self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("26.10", ""))
-        self.assertEqual((c.library, c.version, c.warning), (str(Path("v/MediaInfo.dll")), "26.10", ""))
+        self.assertEqual((c.library, c.version), (str(Path("v/MediaInfo.dll")), "26.10"))
 
-    def test_load_failure_falls_back_with_warning(self):
+    def test_load_failure_raises_with_reason(self):
+        with self.assertRaises(core.MediaInfoUnavailable) as cm:
+            self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("", "bad image"))
+        msg = str(cm.exception)
+        for part in ("MediaInfo 26.10", "couldn't be loaded", "bad image", str(Path("v/MediaInfo.dll"))):
+            self.assertIn(part, msg)
+
+    def test_no_fallback_probe_of_the_bundled_library(self):
         calls = []
 
         def probe(lib):
             calls.append(lib)
-            return ("", "bad image") if lib else ("24.12", "")
-        c = self.resolve(Path("v/MediaInfo.dll"), probe)
-        self.assertIsNone(c.library)
-        self.assertEqual(c.version, "24.12")
-        self.assertEqual(c.warning, self.WARNING)
-        self.assertEqual(calls, [str(Path("v/MediaInfo.dll")), None])
+            return "", "bad image"
+        with self.assertRaises(core.MediaInfoUnavailable):
+            self.resolve(Path("v/MediaInfo.dll"), probe)
+        self.assertEqual(calls, [str(Path("v/MediaInfo.dll"))])   # pymediainfo's own copy is never tried
 
-    WARNING = "WARNING: MediaInfo 26.10 couldn't be loaded; used the older MediaInfo 24.12."
+    def test_missing_dll_raises(self):
+        with self.assertRaises(core.MediaInfoUnavailable) as cm:
+            self.resolve(None, lambda lib: ("24.12", ""))
+        self.assertIn("MediaInfo 26.10 isn't available", str(cm.exception))
+        self.assertIn("is missing", str(cm.exception))
 
-    def test_missing_dll_falls_back_with_same_warning(self):
-        c = self.resolve(None, lambda lib: ("24.12", ""))
-        self.assertIsNone(c.library)
-        self.assertEqual(c.warning, self.WARNING)
+    def test_missing_dll_and_unknown_version_still_a_clear_error(self):
+        with self.assertRaises(core.MediaInfoUnavailable) as cm:
+            self.resolve(None, lambda lib: ("", ""), expected="")
+        self.assertTrue(str(cm.exception).startswith("MediaInfo isn't available"))
 
-    def test_warning_without_a_known_vendored_version(self):
-        c = self.resolve(None, lambda lib: ("24.12", ""), expected="")
-        self.assertEqual(c.warning, "WARNING: MediaInfo couldn't be loaded; used the older MediaInfo 24.12.")
+    def test_wrong_version_raises(self):
+        with self.assertRaises(core.MediaInfoUnavailable) as cm:
+            self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("24.12", ""))
+        self.assertIn("Expected MediaInfo 26.10", str(cm.exception))
+        self.assertIn("24.12", str(cm.exception))
 
-    def test_off_windows_is_not_a_warning(self):
+    def test_unknown_expected_version_accepts_whatever_loads(self):
+        c = self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("26.10", ""), expected="")
+        self.assertEqual(c.version, "26.10")
+
+    def test_off_windows_uses_pymediainfos_library(self):
         c = self.resolve(None, lambda lib: ("24.12", ""), platform="linux")
-        self.assertEqual((c.library, c.warning), (None, ""))
+        self.assertEqual((c.library, c.version), (None, "24.12"))
 
-    def test_result_is_cached(self):
-        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=Path("v/M.dll")), \
-                self._mock.patch.object(core, "_probe_mediainfo", return_value=("26.10", "")) as probe:
+    def test_off_windows_load_failure_raises(self):
+        with self.assertRaises(core.MediaInfoUnavailable):
+            self.resolve(None, lambda lib: ("", "no libmediainfo"), platform="linux")
+
+    def test_result_is_cached_but_failures_are_not(self):
+        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=Path("v/M.dll")),                 self._mock.patch.object(core, "_vendored_version", return_value="26.10"),                 self._mock.patch.object(core, "_probe_mediainfo", return_value=("26.10", "")) as probe:
             core.resolve_mediainfo(refresh=True)
             core.resolve_mediainfo()
             core.mediainfo_library()
             self.assertEqual(probe.call_count, 1)
+        core._choice = None
+        with self._mock.patch("mediareport.paths.vendored_mediainfo", return_value=Path("v/M.dll")),                 self._mock.patch.object(core, "_vendored_version", return_value="26.10"),                 self._mock.patch.object(core, "_probe_mediainfo", return_value=("", "boom")) as probe:
+            for _ in range(2):
+                with self.assertRaises(core.MediaInfoUnavailable):
+                    core.resolve_mediainfo()
+            self.assertEqual(probe.call_count, 2)
 
     def test_scan_file_passes_the_library(self):
         core._choice = core.MediaInfoChoice("C:/x/MediaInfo.dll", "26.10")
         with self._mock.patch("pymediainfo.MediaInfo.parse", return_value=NS(tracks=[])) as parse:
             core.scan_file(Path("D:/L/a.mkv"))
         self.assertEqual(parse.call_args.kwargs["library_file"], "C:/x/MediaInfo.dll")
+
+    def test_real_vendored_dll_loads_and_matches_version_file(self):
+        """The committed DLL is the version vendor/mediainfo/VERSION says (no mocks, no media files)."""
+        c = core.resolve_mediainfo(refresh=True)
+        self.assertEqual(c.version, core._vendored_version())
+        self.assertTrue(Path(c.library).is_file())
+
+
+if __name__ == "__main__":
+    unittest.main()

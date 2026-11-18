@@ -50,10 +50,6 @@ class TestResolveExportDir(unittest.TestCase):
             self.assertFalse(paths.is_writable_dir(f / "sub"))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestVendoredMediaInfo(unittest.TestCase):
     def test_found_in_app_dir(self):
         with tempfile.TemporaryDirectory() as d:
@@ -73,3 +69,7 @@ class TestVendoredMediaInfo(unittest.TestCase):
     def test_non_windows_gives_none(self):
         with mock.patch.object(paths.sys, "platform", "linux"):
             self.assertIsNone(paths.vendored_mediainfo())
+
+
+if __name__ == "__main__":
+    unittest.main()
