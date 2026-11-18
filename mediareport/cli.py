@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=USAGE, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("folders", nargs="+", help="Folders to scan (recursive)")
     ap.add_argument("-o", "--output", default=None,
-                    help="Output .xlsx (default: 'Media Report <date>_<time>.xlsx' in the export folder next to this script)")
+                    help="Output .xlsx (default: 'report-<date>_<time>.xlsx' in the export folder next to this script)")
     ap.add_argument("--max-audio", type=non_negative, default=0, help="Cap Audio columns (0 = as many as needed)")
     ap.add_argument("--max-subs", type=non_negative, default=0, help="Cap Sub columns (0 = as many as needed)")
     ap.add_argument("--split-tracks", action="store_true",

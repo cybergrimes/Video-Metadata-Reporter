@@ -1,6 +1,6 @@
-"""Media Report - GUI launcher (no console window on Windows).
+"""Video Metadata Reporter - GUI launcher (no console window on Windows).
 
-    py MediaReport.pyw
+    py VideoMetadataReporter.pyw
 """
 import sys
 import traceback
@@ -22,7 +22,7 @@ def _report_startup_failure() -> None:
         from tkinter import messagebox
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror("Media Report could not start", text[-2000:])
+        messagebox.showerror("Video Metadata Reporter could not start", text[-2000:])
         root.destroy()
     except Exception:
         print(text, file=sys.stderr)

@@ -41,7 +41,7 @@ class TestMisc(unittest.TestCase):
     def test_workers_capped_on_load(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "x.ini"
-            p.write_text("[Media Report]\nworkers = 100000\n", encoding="utf-8")
+            p.write_text("[Video Metadata Reporter]\nworkers = 100000\n", encoding="utf-8")
             self.assertEqual(settings.load(p).workers, settings.MAX_WORKERS)
 
 
@@ -129,7 +129,7 @@ class TestNewColumnsAndSelection(unittest.TestCase):
             settings.save(settings.Options(hidden_columns=["Writing library", "Audio"]), p)
             self.assertEqual(settings.load(p).hidden_columns, ["Writing library", "Audio"])
             self.assertEqual(settings.load(Path(d) / "none.ini").hidden_columns, [])
-            p.write_text("[Media Report]\nhidden_columns = frame rate, nonsense, folder\n", encoding="utf-8")
+            p.write_text("[Video Metadata Reporter]\nhidden_columns = frame rate, nonsense, folder\n", encoding="utf-8")
             self.assertEqual(settings.load(p).hidden_columns, ["Frame rate"])
 
     def test_cli_rejects_unknown_column(self):

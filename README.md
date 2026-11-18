@@ -1,15 +1,15 @@
-# Media Report
+# Video Metadata Reporter
 
 Scan a library of movie and TV rips and export the details MediaInfo reports (video, audio, subtitles) to an Excel workbook, one row per video file.
 
-Media Report uses the [MediaInfo](https://mediaarea.net/en/MediaInfo) library but is an independent project, not affiliated with or endorsed by MediaArea.net SARL. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Video Metadata Reporter uses the [MediaInfo](https://mediaarea.net/en/MediaInfo) library but is an independent project, not affiliated with or endorsed by MediaArea.net SARL. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ![platform: Windows](https://img.shields.io/badge/platform-Windows-blue)
 
 ## Quick start (Windows)
 
 1. Download and unzip the release.
-2. Run `MediaReport.exe`.
+2. Run `VideoMetadataReporter.exe`.
 3. Click **Add...** and choose one or more library folders (Ctrl-click or Shift-click to pick several), then **Start scan**.
 4. When it finishes, click **Open report**.
 
@@ -35,20 +35,20 @@ Columns: `Folder, File, Category, Container, Encoded date, Writing application, 
 
 | Option | Meaning |
 |---|---|
-| Save reports to | Where reports go. Default is an `export` folder next to the app. If that isn't writable, reports go to `Documents\Media Report` and the log says so. |
+| Save reports to | Where reports go. Default is an `export` folder next to the app. If that isn't writable, reports go to `Documents\Video Metadata Reporter` and the log says so. |
 | Max audio / subtitle columns | Cap the number of `Audio N` / `Sub N` columns. `0` means no cap. The `# Audio` / `# Subs` columns always show the true count. |
 | Choose report fields | Pick which fields (columns) go in the report. Folder and File are always included; every other column (including the audio and subtitle groups) can be switched off. Saved as `hidden_columns` in the ini; `--hide-columns "Writing library,Aspect ratio"` on the command line. |
 | Separate columns | Off: one combined cell per track. On: each detail gets its own column, grouped by track. Audio N: language, codec, channels, bitrate, name, default. Sub N: language, format, name, forced, default. Also `split_tracks` in the ini and `--split-tracks` on the command line. |
 | Files at once | How many files are scanned in parallel. |
 | Extras folder names | Comma-separated folder names treated as non-main content. Videos in them are still scanned but get the folder name in the `Category` column instead of `Main`. If this is left empty, the `Category` column is left out of the report. |
 
-**Cancel** stops the scan and writes nothing. Reports are never overwritten; a repeat name gets ` (2)`, ` (3)`, and so on.
+**Cancel** stops the scan and writes nothing. Reports are named `report-YYYY-MM-DD_HHMM.xlsx` and are never overwritten; a repeat name gets ` (2)`, ` (3)`, and so on.
 
 ## Settings
 
-Settings are saved to `MediaReport.ini` next to the app (or in `%APPDATA%\MediaReport` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything.
+Settings are saved to `VideoMetadataReporter.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A `MediaReport.ini` from an earlier version is read once if the new file doesn't exist yet. A `VideoMetadataReporter.ini` from an earlier version is read once if the new file does not exist yet.
 
-If the app fails to start, the error is shown in a dialog and saved to `startup-error.log` in `%APPDATA%\MediaReport`.
+If the app fails to start, the error is shown in a dialog and saved to `startup-error.log` in `%APPDATA%\VideoMetadataReporter`.
 
 ## Running from source
 
@@ -56,16 +56,16 @@ Requires a recent Python 3 with Tkinter (developed on 3.15).
 
 ```
 py -m pip install -r requirements.txt
-py MediaReport.pyw
+py VideoMetadataReporter.pyw
 ```
 
 Command line (no GUI; uses the same scan and report code as the app, and never overwrites an existing `-o` file):
 
 ```
-py media_report.py "D:\Movies" "D:\TV" -o out.xlsx --max-audio 3 --max-subs 6
+py video_metadata_reporter.py "D:\Movies" "D:\TV" -o out.xlsx --max-audio 3 --max-subs 6
 ```
 
-Other flags: `--workers`, `--extras`, `--split-tracks`, `--hide-columns`. Run `py media_report.py --help` for the full list.
+Other flags: `--workers`, `--extras`, `--split-tracks`, `--hide-columns`. Run `py video_metadata_reporter.py --help` for the full list.
 
 On Linux, install the MediaInfo library first (for example `libmediainfo0v5` on Debian/Ubuntu).
 
@@ -82,10 +82,10 @@ Tests use fake track data and temporary folders only.
 ```
 py -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
-.venv\Scripts\python -m PyInstaller MediaReport.spec --noconfirm
+.venv\Scripts\python -m PyInstaller VideoMetadataReporter.spec --noconfirm
 ```
 
-The result is `dist\MediaReport\`. Zip that folder to share it.
+The result is `dist\VideoMetadataReporter\`. Zip that folder to share it.
 
 ## Layout
 
@@ -95,13 +95,13 @@ mediareport/
   scanner.py       parallel, cancellable scan
   excel.py         workbook writer
   job.py           find -> scan -> write, toolkit-agnostic
-  settings.py      MediaReport.ini load/save
+  settings.py      VideoMetadataReporter.ini load/save
   paths.py         app/config/export folders, open file or folder
   folderpicker.py  multi-select folder dialog (Windows system dialog)
   gui.py           Tkinter front-end
   cli.py           command-line front-end
-MediaReport.pyw   GUI launcher (no console)
-media_report.py   CLI launcher
+VideoMetadataReporter.pyw   GUI launcher (no console)
+video_metadata_reporter.py   CLI launcher
 ```
 
 All logic lives in the package; `gui.py` only calls it, so the interface can be swapped without touching the scanner.

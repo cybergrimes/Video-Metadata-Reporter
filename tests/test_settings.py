@@ -14,7 +14,7 @@ class TestSplitSetting(unittest.TestCase):
             self.assertFalse(settings.load(p).split_tracks)
             settings.save(settings.Options(split_tracks=True), p)
             self.assertTrue(settings.load(p).split_tracks)
-            p.write_text("[Media Report]\nsplit_tracks = banana\n", encoding="utf-8")
+            p.write_text("[Video Metadata Reporter]\nsplit_tracks = banana\n", encoding="utf-8")
             self.assertFalse(settings.load(p).split_tracks)
 
 
@@ -23,7 +23,15 @@ class TestSettings(unittest.TestCase):
         self._td = tempfile.TemporaryDirectory()
         self.addCleanup(self._td.cleanup)
         self.dir = Path(self._td.name)
-        self.ini = self.dir / "MediaReport.ini"
+        self.ini = self.dir / "VideoMetadataReporter.ini"
+
+    def test_loads_pre_rename_settings(self):
+        old = self.dir / "MediaReport.ini"
+        old.write_text("[Media Report]\nmax_audio = 2\nfolders =\n    D:\\Movies\n", encoding="utf-8")
+        o = settings.load(self.ini)            # new file missing -> falls back to the old one
+        self.assertEqual((o.max_audio, o.folders), (2, ["D:\\Movies"]))
+        settings.save(o, self.ini)             # saving writes the new name and section
+        self.assertIn("[Video Metadata Reporter]", self.ini.read_text(encoding="utf-8"))
 
     def test_round_trip(self):
         o = settings.Options(folders=[r"D:\Movies", r"E:\TV Shows"], export_folder=r"D:\Out",
@@ -41,14 +49,14 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(o.extras_folders, list(DEFAULT_EXTRAS_FOLDERS))
 
     def test_bad_ints(self):
-        self.ini.write_text("[Media Report]\nmax_audio = abc\nmax_subs = 1.5\nworkers = x\n", encoding="utf-8")
+        self.ini.write_text("[Video Metadata Reporter]\nmax_audio = abc\nmax_subs = 1.5\nworkers = x\n", encoding="utf-8")
         o = settings.load(self.ini)
         self.assertEqual((o.max_audio, o.max_subs, o.workers), (0, 0, 4))
 
     def test_workers_min_1(self):
-        self.ini.write_text("[Media Report]\nworkers = 0\n", encoding="utf-8")
+        self.ini.write_text("[Video Metadata Reporter]\nworkers = 0\n", encoding="utf-8")
         self.assertEqual(settings.load(self.ini).workers, 1)
-        self.ini.write_text("[Media Report]\nworkers = -5\nmax_audio = -2\n", encoding="utf-8")
+        self.ini.write_text("[Video Metadata Reporter]\nworkers = -5\nmax_audio = -2\n", encoding="utf-8")
         o = settings.load(self.ini)
         self.assertEqual((o.workers, o.max_audio), (1, 0))
 
@@ -75,14 +83,14 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(got.extras_folders, [])
 
     def test_save_creates_parent_and_no_tmp(self):
-        p = self.dir / "sub" / "MediaReport.ini"
+        p = self.dir / "sub" / "VideoMetadataReporter.ini"
         settings.save(settings.Options(), p)
         self.assertTrue(p.exists())
         self.assertFalse(p.with_name(p.name + ".tmp").exists())
 
     def test_report_name(self):
         self.assertEqual(settings.Options().report_name(datetime(2026, 1, 2, 3, 4)),
-                         "Media Report 2026-01-02_0304.xlsx")
+                         "report-2026-01-02_0304.xlsx")
 
 
 if __name__ == "__main__":

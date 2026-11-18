@@ -32,7 +32,7 @@ class TestResolveExportDir(unittest.TestCase):
 
     def test_fallback(self):
         with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as docs:
-            fb = Path(docs) / "Media Report"
+            fb = Path(docs) / "Video Metadata Reporter"
             with mock.patch.object(paths, "app_dir", return_value=Path(d)), \
                  mock.patch.object(paths, "is_writable_dir", return_value=False), \
                  mock.patch.object(paths, "documents_export_dir", return_value=fb):

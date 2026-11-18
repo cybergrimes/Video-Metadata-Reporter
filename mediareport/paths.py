@@ -7,8 +7,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-APP_DIR_NAME = "MediaReport"          # per-user config folder name
-DOCUMENTS_EXPORT_NAME = "Media Report"  # fallback export folder under ~/Documents
+APP_DIR_NAME = "VideoMetadataReporter"          # per-user config folder name
+DOCUMENTS_EXPORT_NAME = "Video Metadata Reporter"  # fallback export folder under ~/Documents
 
 
 def app_dir() -> Path:
@@ -56,7 +56,7 @@ def resolve_export_dir(configured: str) -> tuple[Path, str | None]:
     """Turn the configured export folder into a usable path.
 
     Empty -> <app folder>/export. Relative -> relative to the app folder.
-    If that folder can't be written, fall back to ~/Documents/Media Report.
+    If that folder can't be written, fall back to ~/Documents/Video Metadata Reporter.
     Returns (path, note) where note explains a fallback, else None.
     """
     configured = (configured or "").strip()

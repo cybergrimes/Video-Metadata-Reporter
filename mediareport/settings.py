@@ -1,4 +1,4 @@
-"""User options, stored in a hand-editable MediaReport.ini.
+"""User options, stored in a hand-editable VideoMetadataReporter.ini.
 
 Location: next to the app (portable) if that folder is writable or already has
 the file; otherwise the per-OS user config folder (see paths.user_config_dir).
@@ -14,8 +14,10 @@ from pathlib import Path
 from .core import DEFAULT_EXTRAS_FOLDERS, normalize_hidden_columns, parse_extras
 from .paths import app_dir, is_writable_dir, resolve_export_dir, user_config_dir
 
-INI_NAME = "MediaReport.ini"
-SECTION = "Media Report"
+INI_NAME = "VideoMetadataReporter.ini"
+LEGACY_INI_NAME = "MediaReport.ini"        # pre-rename settings file, still read if the new one is missing
+LEGACY_SECTION = "Media Report"
+SECTION = "Video Metadata Reporter"
 MAX_WORKERS = 32
 
 
@@ -35,7 +37,7 @@ class Options:
         return resolve_export_dir(self.export_folder)
 
     def report_name(self, now: datetime | None = None) -> str:
-        return f"Media Report {(now or datetime.now()).strftime('%Y-%m-%d_%H%M')}.xlsx"
+        return f"report-{(now or datetime.now()).strftime('%Y-%m-%d_%H%M')}.xlsx"
 
 
 def settings_path() -> Path:
@@ -62,11 +64,17 @@ def load(path: Path | None = None) -> Options:
     """Load settings; a missing/unreadable file or bad values fall back to defaults."""
     path = path or settings_path()
     opts = Options()
+    if not path.exists() and path.name == INI_NAME:
+        path = path.with_name(LEGACY_INI_NAME)     # settings saved before the rename
     cp = configparser.ConfigParser(interpolation=None)
     try:
         cp.read(path, encoding="utf-8")
     except (OSError, configparser.Error, UnicodeDecodeError):
         return opts
+    if not cp.has_section(SECTION) and cp.has_section(LEGACY_SECTION):
+        cp.add_section(SECTION)
+        for key, value in cp.items(LEGACY_SECTION):
+            cp.set(SECTION, key, value)
     if not cp.has_section(SECTION):
         return opts
 
@@ -91,7 +99,7 @@ def load(path: Path | None = None) -> Options:
 # --------------------------------------------------------------------------- save
 
 TEMPLATE = """\
-; Media Report settings. Safe to edit by hand while the app is closed.
+; Video Metadata Reporter settings. Safe to edit by hand while the app is closed.
 ; Lines starting with ; are comments.
 
 [{section}]

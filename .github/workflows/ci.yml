@@ -30,8 +30,8 @@ jobs:
         with:
           python-version: "3.13"
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m PyInstaller MediaReport.spec --noconfirm
+      - run: python -m PyInstaller VideoMetadataReporter.spec --noconfirm
       - uses: actions/upload-artifact@v4
         with:
-          name: MediaReport-windows
-          path: dist/MediaReport
+          name: VideoMetadataReporter-windows
+          path: dist/VideoMetadataReporter

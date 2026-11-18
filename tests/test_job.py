@@ -13,7 +13,7 @@ from mediareport.core import FileRecord
 from mediareport.settings import Options
 
 NOW = datetime(2024, 5, 6, 7, 8)
-STAMP_NAME = "Media Report 2024-05-06_0708.xlsx"
+STAMP_NAME = "report-2024-05-06_0708.xlsx"
 
 
 def fake_scan(path, extras):
