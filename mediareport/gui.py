@@ -99,7 +99,7 @@ class App:
         self.btn_browse = ttk.Button(of, text="Browse...", command=self.browse_export)
         self.btn_browse.grid(row=0, column=2)
         ttk.Button(of, text="Open folder", command=self.open_export_folder).grid(row=0, column=3, padx=(4, 0))
-        ttk.Label(of, text="Leave empty for the 'export' folder next to the app.",
+        ttk.Label(of, text="If left empty, reports are saved to an 'export' folder next to the app.",
                   foreground="gray").grid(row=1, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
 
         nums = ttk.Frame(of)
@@ -124,8 +124,10 @@ class App:
         self.var_extras = tk.StringVar()
         self.ent_extras = ttk.Entry(of, textvariable=self.var_extras)
         self.ent_extras.grid(row=4, column=1, columnspan=3, sticky="ew", padx=(PAD, 0), pady=(PAD, 0))
-        ttk.Label(of, text="Comma-separated. Files under these folders get that Type instead of 'Main'.",
-                  foreground="gray").grid(row=5, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
+        ttk.Label(of, text="Separate names with commas. Videos in these folders are still scanned, but get the "
+                       "folder name in the Type column instead of 'Main'. Leave empty to omit the Type column.",
+                  foreground="gray", wraplength=470, justify="left",
+                  ).grid(row=5, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
 
         self.var_split = tk.BooleanVar()
         self.chk_split = ttk.Checkbutton(

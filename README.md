@@ -37,7 +37,7 @@ Columns: `Folder, File, Type, Container, Size (GB), Duration (min), Video Codec,
 | Max audio / subtitle columns | Cap the number of `Audio N` / `Sub N` columns. `0` means no cap. The `# Audio` / `# Subs` columns always show the true count. |
 | Separate columns | Off: one combined cell per track. On: each detail gets its own column, grouped by track. Audio N: Language, Type (codec), Channels, Bitrate, Name, Default. Sub N: Language, Type (format), Name, Forced, Default. Also `split_tracks` in the ini and `--split-tracks` on the command line. |
 | Files at once | How many files are scanned in parallel. |
-| Extras folder names | Comma-separated folder names treated as non-main content. |
+| Extras folder names | Comma-separated folder names treated as non-main content. Videos in them are still scanned but get the folder name in the `Type` column instead of `Main`. If this is left empty, the `Type` column is left out of the report. |
 
 **Cancel** stops the scan and writes nothing. Reports are never overwritten; a repeat name gets ` (2)`, ` (3)`, and so on.
 

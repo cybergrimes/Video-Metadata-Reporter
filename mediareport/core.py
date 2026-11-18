@@ -21,6 +21,8 @@ BASE_COLUMNS = [
     "Video Bitrate", "# Audio", "# Subs",
 ]
 
+TYPE_COLUMN = "Type"   # Main / Extras / ... ; omitted from reports when no extras folders are defined
+
 # Per-track columns used when tracks are split into separate fields
 # ("Audio 1 Language", "Audio 1 Type", ...). Order matters.
 AUDIO_FIELDS = ["Language", "Type", "Channels", "Bitrate", "Name", "Default"]

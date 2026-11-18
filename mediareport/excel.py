@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, FileRecord, ScanError
+from .core import AUDIO_FIELDS, BASE_COLUMNS, SUB_FIELDS, TYPE_COLUMN, FileRecord, ScanError
 
 HEADER_FILL = "DDEBF7"
 PADDING = 2          # extra width (chars) so text doesn't touch the gridline
@@ -21,6 +21,7 @@ FILTER_BUTTON = 3    # extra width on header cells for the autofilter arrow
 class ExcelOptions:
     max_audio: int = 0   # 0 = as many Audio columns as needed
     max_subs: int = 0    # 0 = as many Sub columns as needed
+    include_type: bool = True    # False = leave out the "Type" column (no extras folders defined)
     split_tracks: bool = False   # True = "Audio 1 Language", "Audio 1 Type", ... instead of one mixed cell
 
 
@@ -38,12 +39,13 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
                    opts: ExcelOptions | None = None) -> Workbook:
     opts = opts or ExcelOptions()
     n_aud, n_sub = track_column_counts(records, opts)
+    base = BASE_COLUMNS if opts.include_type else [c for c in BASE_COLUMNS if c != TYPE_COLUMN]
     if opts.split_tracks:
-        headers = (BASE_COLUMNS
+        headers = (base
                    + [f"Audio {i} {f}" for i in range(1, n_aud + 1) for f in AUDIO_FIELDS]
                    + [f"Sub {i} {f}" for i in range(1, n_sub + 1) for f in SUB_FIELDS])
     else:
-        headers = BASE_COLUMNS + [f"Audio {i}" for i in range(1, n_aud + 1)] + [f"Sub {i}" for i in range(1, n_sub + 1)]
+        headers = base + [f"Audio {i}" for i in range(1, n_aud + 1)] + [f"Sub {i}" for i in range(1, n_sub + 1)]
 
     wb = Workbook()
     ws = wb.active
@@ -55,7 +57,10 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
                       + _split_cells(r.subs_split, n_sub, len(SUB_FIELDS)))
         else:
             tracks = (r.audio + [""] * n_aud)[:n_aud] + (r.subs + [""] * n_sub)[:n_sub]
-        ws.append(r.base_values() + tracks)
+        values = r.base_values()
+        if not opts.include_type:
+            del values[BASE_COLUMNS.index(TYPE_COLUMN)]
+        ws.append(values + tracks)
 
     # Formatting: bold header, freeze panes, filters, sensible widths
     fill = PatternFill("solid", fgColor=HEADER_FILL)

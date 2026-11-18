@@ -60,7 +60,8 @@ def main(argv: list[str] | None = None) -> int:
         output = export_dir / f"media_report_{stamp}.xlsx"
     out = write_workbook(result.records, result.errors, output,
                          ExcelOptions(max_audio=args.max_audio, max_subs=args.max_subs,
-                                    split_tracks=args.split_tracks))
+                                    split_tracks=args.split_tracks,
+                                    include_type=bool(extras)))
     n_err = len(result.errors)
     print(f"\nDone: {len(result.records)} files -> {out}"
           + (f" ({n_err} errors, see 'Errors' sheet)" if n_err else ""))

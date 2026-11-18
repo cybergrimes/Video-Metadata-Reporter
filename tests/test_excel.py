@@ -67,6 +67,28 @@ class TestWorkbook(unittest.TestCase):
             self.assertTrue(p.exists())
 
 
+class TestIncludeType(unittest.TestCase):
+    def test_type_column_omitted(self):
+        r = rec("a", 1, 0)
+        r.type = "Extras"
+        ws = excel.build_workbook([r], [], excel.ExcelOptions(include_type=False))["Library"]
+        out = rows(ws)
+        self.assertEqual(out[0][:4], ["Folder", "File", "Container", "Size (GB)"])
+        self.assertNotIn("Type", out[0])
+        self.assertEqual(len(out[0]), len(BASE_COLUMNS) - 1 + 1)
+        self.assertEqual(out[1][:3], ["D:/x", "a", None])      # Container is None for this fake record
+        self.assertNotIn("Extras", out[1])
+
+    def test_type_column_kept_by_default(self):
+        self.assertIn("Type", rows(excel.build_workbook([rec("a", 0, 0)], [])["Library"])[0])
+
+    def test_split_and_freeze_unaffected(self):
+        ws = excel.build_workbook([rec("a", 1, 1)], [],
+                                  excel.ExcelOptions(include_type=False, split_tracks=True))["Library"]
+        self.assertEqual(ws.freeze_panes, "C2")
+        self.assertNotIn("Type", rows(ws)[0])
+
+
 class TestSplitTracks(unittest.TestCase):
     def build(self, **kw):
         r = FileRecord(folder="D:/x", file="a.mkv",
