@@ -1,6 +1,7 @@
 """Write scan results to an .xlsx workbook (one "Library" row per file + "Errors" sheet)."""
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -12,7 +13,8 @@ from openpyxl.utils import get_column_letter
 from .core import BASE_COLUMNS, FileRecord, ScanError
 
 HEADER_FILL = "DDEBF7"
-MAX_COL_WIDTH = 60
+PADDING = 2          # extra width (chars) so text doesn't touch the gridline
+FILTER_BUTTON = 3    # extra width on header cells for the autofilter arrow
 
 
 @dataclass
@@ -54,24 +56,48 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
         cell.alignment = Alignment(vertical="center")
     ws.freeze_panes = "C2"
     ws.auto_filter.ref = ws.dimensions
-    for idx, col in enumerate(headers, 1):
-        letter = get_column_letter(idx)
-        longest = max(len(str(c.value or "")) for c in ws[letter][:500])
-        ws.column_dimensions[letter].width = min(max(longest + 2, len(col) + 2), MAX_COL_WIDTH)
+    autofit_columns(ws, filter_buttons=True)
 
     if errors:
         es = wb.create_sheet("Errors")
         es.append(["File", "Error"])
         for e in errors:
             es.append([e.path, e.message])
+        autofit_columns(es)
     return wb
+
+
+def autofit_columns(ws, filter_buttons: bool = False) -> None:
+    """Size every column to its longest value, like Excel's AutoFit (no cap).
+
+    Width is in Excel character units; +PADDING keeps text off the gridline,
+    and headers get FILTER_BUTTON more so the autofilter arrow doesn't cover them.
+    """
+    widths: dict[int, int] = {}
+    for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+        extra = FILTER_BUTTON if (row_idx == 1 and filter_buttons) else 0
+        for col_idx, value in enumerate(row, 1):
+            if value is None or value == "":
+                continue
+            w = len(str(value)) + extra
+            if w > widths.get(col_idx, 0):
+                widths[col_idx] = w
+    for col_idx, w in widths.items():
+        ws.column_dimensions[get_column_letter(col_idx)].width = w + PADDING
 
 
 def write_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
                    path: str | Path, opts: ExcelOptions | None = None) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    build_workbook(records, errors, opts).save(path)
+    # Save under a temp name first so a failed save never leaves a truncated report.
+    tmp = path.with_name(f"~tmp-{path.name}")
+    try:
+        build_workbook(records, errors, opts).save(tmp)
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
     return path
 
 

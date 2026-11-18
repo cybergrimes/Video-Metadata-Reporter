@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 VIDEO_EXTS = {".mkv", ".mp4", ".m4v", ".avi", ".mov", ".ts", ".m2ts", ".wmv", ".mpg", ".mpeg", ".webm"}
 
@@ -58,11 +58,18 @@ class ScanError:
 
 # --------------------------------------------------------------------------- files
 
-def find_files(folders: Iterable[str | os.PathLike]) -> list[Path]:
-    """All video files under the given folders (recursive), sorted, de-duplicated."""
+def find_files(folders: Iterable[str | os.PathLike],
+               should_stop: Callable[[], bool] | None = None) -> list[Path]:
+    """All video files under the given folders (recursive), sorted, de-duplicated.
+
+    should_stop is checked once per directory; when it returns True the walk
+    stops early and returns what was found so far.
+    """
     files: set[Path] = set()
     for folder in folders:
         for root, _, names in os.walk(folder):
+            if should_stop and should_stop():
+                return sorted(files)
             files.update(Path(root) / n for n in names if Path(n).suffix.lower() in VIDEO_EXTS)
     return sorted(files)
 

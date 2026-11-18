@@ -67,6 +67,35 @@ class TestWorkbook(unittest.TestCase):
             self.assertTrue(p.exists())
 
 
+class TestAutofit(unittest.TestCase):
+    def width(self, ws, header):
+        letter = next(c.column_letter for c in ws[1] if c.value == header)
+        return ws.column_dimensions[letter].width
+
+    def test_long_values_are_not_capped(self):
+        long_folder = "D:/" + "x" * 150
+        r = FileRecord(folder=long_folder, file="a.mkv", audio=["English | " + "y" * 90])
+        ws = excel.build_workbook([r], [])["Library"]
+        self.assertEqual(self.width(ws, "Folder"), len(long_folder) + excel.PADDING)
+        self.assertEqual(self.width(ws, "Audio 1"), 100 + excel.PADDING)
+
+    def test_header_gets_room_for_filter_button(self):
+        ws = excel.build_workbook([rec("a", 0, 0)], [])["Library"]
+        self.assertEqual(self.width(ws, "HDR"), len("HDR") + excel.FILTER_BUTTON + excel.PADDING)
+
+    def test_all_rows_measured(self):
+        recs = [rec(f"f{i}", 0, 0) for i in range(600)]
+        recs.append(FileRecord(folder="D:/x", file="z" * 80))   # row 602, past the old 500-row sample
+        ws = excel.build_workbook(recs, [])["Library"]
+        self.assertEqual(self.width(ws, "File"), 80 + excel.PADDING)
+
+    def test_errors_sheet_autofit(self):
+        wb = excel.build_workbook([], [ScanError("D:/" + "p" * 70, "boom")])
+        es = wb["Errors"]
+        self.assertEqual(es.column_dimensions["A"].width, 73 + excel.PADDING)
+        self.assertEqual(es.column_dimensions["B"].width, len("Error") + excel.PADDING)
+
+
 class TestUniquePath(unittest.TestCase):
     def test_unique(self):
         with tempfile.TemporaryDirectory() as d:

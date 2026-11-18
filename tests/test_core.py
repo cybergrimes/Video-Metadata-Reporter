@@ -105,6 +105,16 @@ class TestFindFiles(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(core.find_files([d]), [])
 
+    def test_should_stop(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "sub").mkdir()
+            (root / "a.mkv").write_bytes(b"")
+            (root / "sub" / "b.mkv").write_bytes(b"")
+            self.assertEqual(core.find_files([root], should_stop=lambda: True), [])
+            self.assertEqual(len(core.find_files([root], should_stop=lambda: False)), 2)
+            self.assertEqual(len(core.find_files([root], should_stop=None)), 2)
+
 
 class TestRecord(unittest.TestCase):
     def test_full(self):
