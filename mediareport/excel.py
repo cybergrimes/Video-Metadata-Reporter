@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Sequence
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -28,9 +29,9 @@ class ExcelOptions:
 def track_column_counts(records: Sequence[FileRecord], opts: ExcelOptions) -> tuple[int, int]:
     n_aud = max((len(r.audio) for r in records), default=0)
     n_sub = max((len(r.subs) for r in records), default=0)
-    if opts.max_audio:
+    if opts.max_audio > 0:
         n_aud = min(n_aud, opts.max_audio)
-    if opts.max_subs:
+    if opts.max_subs > 0:
         n_sub = min(n_sub, opts.max_subs)
     return n_aud, n_sub
 
@@ -52,7 +53,7 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
     wb = Workbook()
     ws = wb.active
     ws.title = "Library"
-    ws.append(headers)
+    ws.append([_clean(h) for h in headers])
     for r in records:
         if opts.split_tracks:
             audio = _split_cells(r.audio_split, n_aud, len(AUDIO_FIELDS))
@@ -63,7 +64,8 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
         values = r.base_values()
         if not opts.include_type:
             del values[BASE_COLUMNS.index(TYPE_COLUMN)]
-        ws.append(values + audio + [len(r.subs)] + subs)
+        ws.append([_clean(v) for v in values + audio + [len(r.subs)] + subs])
+    _force_text(ws)
 
     # Formatting: bold header, freeze panes, filters, sensible widths
     fill = PatternFill("solid", fgColor=HEADER_FILL)
@@ -79,9 +81,26 @@ def build_workbook(records: Sequence[FileRecord], errors: Sequence[ScanError],
         es = wb.create_sheet("Errors")
         es.append(["File", "Error"])
         for e in errors:
-            es.append([e.path, e.message])
+            es.append([_clean(e.path), _clean(e.message)])
+        _force_text(es)
         autofit_columns(es)
     return wb
+
+
+def _clean(value):
+    """Make a string safe for openpyxl: drop control characters and unencodable (lone surrogate) code points."""
+    if isinstance(value, str):
+        value = ILLEGAL_CHARACTERS_RE.sub("", value)
+        value = value.encode("utf-8", "ignore").decode("utf-8")
+    return value
+
+
+def _force_text(ws) -> None:
+    """Strings from media metadata or file names must never become live formulas (openpyxl treats '=...' as one)."""
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.data_type == "f":
+                cell.data_type = "s"
 
 
 def _split_cells(tracks: Sequence[Sequence[str]], n: int, width: int) -> list[str]:

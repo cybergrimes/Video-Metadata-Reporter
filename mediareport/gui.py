@@ -197,7 +197,7 @@ class App:
 
     def _options_from_widgets(self) -> Options:
         o = self.opts
-        new = Options(
+        return Options(
             folders=list(self.folder_list.get(0, "end")),
             export_folder=self.var_export.get().strip(),
             max_audio=self._int(self.var_audio, min(o.max_audio, MAX_TRACK_COLS), 0, MAX_TRACK_COLS),
@@ -206,7 +206,6 @@ class App:
             extras_folders=parse_extras(self.var_extras.get()),
             workers=self._int(self.var_workers, min(o.workers, MAX_WORKERS), 1, MAX_WORKERS),
         )
-        return new
 
     def _save_settings(self) -> None:
         self.opts = self._options_from_widgets()

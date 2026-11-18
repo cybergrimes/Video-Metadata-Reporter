@@ -20,16 +20,23 @@ Examples:
 """
 
 
+def non_negative(text: str) -> int:
+    n = int(text)
+    if n < 0:
+        raise argparse.ArgumentTypeError("must be 0 or more")
+    return n
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=USAGE, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("folders", nargs="+", help="Folders to scan (recursive)")
     ap.add_argument("-o", "--output", default=None,
-                    help="Output .xlsx (default: export\\media_report_<date>.xlsx next to this script)")
-    ap.add_argument("--max-audio", type=int, default=0, help="Cap Audio columns (0 = as many as needed)")
-    ap.add_argument("--max-subs", type=int, default=0, help="Cap Sub columns (0 = as many as needed)")
+                    help="Output .xlsx (default: 'Media Report <date>_<time>.xlsx' in the export folder next to this script)")
+    ap.add_argument("--max-audio", type=non_negative, default=0, help="Cap Audio columns (0 = as many as needed)")
+    ap.add_argument("--max-subs", type=non_negative, default=0, help="Cap Sub columns (0 = as many as needed)")
     ap.add_argument("--split-tracks", action="store_true",
                     help="Put each audio/sub detail in its own column (Audio 1 Language, Audio 1 Type, ...)")
-    ap.add_argument("--workers", type=int, default=4, help="Files to read in parallel (default 4)")
+    ap.add_argument("--workers", type=int, default=4, choices=range(1, 33), metavar="1-32", help="Files to read in parallel (default 4)")
     ap.add_argument("--extras", default=",".join(DEFAULT_EXTRAS_FOLDERS),
                     help="Comma-separated folder names that mark bonus content (default: %(default)s)")
     args = ap.parse_args(argv)

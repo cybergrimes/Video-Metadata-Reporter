@@ -16,6 +16,7 @@ from .paths import app_dir, is_writable_dir, resolve_export_dir, user_config_dir
 
 INI_NAME = "MediaReport.ini"
 SECTION = "Media Report"
+MAX_WORKERS = 32
 
 
 @dataclass
@@ -78,7 +79,7 @@ def load(path: Path | None = None) -> Options:
         opts.split_tracks = cp.getboolean(SECTION, "split_tracks", fallback=opts.split_tracks)
     except ValueError:
         pass
-    opts.workers = _int(cp, "workers", opts.workers, minimum=1)
+    opts.workers = min(MAX_WORKERS, _int(cp, "workers", opts.workers, minimum=1))
     if "extras_folders" in s:
         opts.extras_folders = parse_extras(s["extras_folders"])
     return opts
@@ -133,6 +134,10 @@ def save(opts: Options, path: Path | None = None) -> Path:
     path = path or settings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(render(opts), encoding="utf-8")
-    os.replace(tmp, path)
+    try:
+        tmp.write_text(render(opts), encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
     return path

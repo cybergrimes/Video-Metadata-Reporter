@@ -71,15 +71,17 @@ class ScanError:
 # --------------------------------------------------------------------------- files
 
 def find_files(folders: Iterable[str | os.PathLike],
-               should_stop: Callable[[], bool] | None = None) -> list[Path]:
+               should_stop: Callable[[], bool] | None = None,
+               on_error: Callable[[OSError], None] | None = None) -> list[Path]:
     """All video files under the given folders (recursive), sorted, de-duplicated.
 
     should_stop is checked once per directory; when it returns True the walk
-    stops early and returns what was found so far.
+    stops early and returns what was found so far. on_error is called with the
+    OSError for each folder that couldn't be read (otherwise they are skipped silently).
     """
     files: set[Path] = set()
     for folder in folders:
-        for root, _, names in os.walk(folder):
+        for root, _, names in os.walk(folder, onerror=on_error):
             if should_stop and should_stop():
                 return sorted(files)
             files.update(Path(root) / n for n in names if Path(n).suffix.lower() in VIDEO_EXTS)
@@ -107,7 +109,8 @@ def content_type(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLD
             pass
     for part in reversed(parent.parts):
         if part.lower() in wanted:
-            return part.title()
+            # Capitalise each word without str.title()'s "Director'S Cut" apostrophe bug.
+            return " ".join(w[:1].upper() + w[1:].lower() for w in part.split(" "))
     return "Main"
 
 

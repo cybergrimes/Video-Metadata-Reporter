@@ -84,7 +84,11 @@ def run_job(
 
     log("Looking for video files...")
     roots = [f for f in folders if os.path.isdir(f)]
-    files = list(find_fn(roots, should_stop=cancel_event.is_set))
+    def walk_error(e: OSError) -> None:
+        log(f"Couldn't read folder {getattr(e, 'filename', None) or ''}: {e.strerror or e}")
+
+    kwargs = {"on_error": walk_error} if find_fn is find_files else {}
+    files = list(find_fn(roots, should_stop=cancel_event.is_set, **kwargs))
     if cancel_event.is_set():
         return finish(CANCELLED, "Cancelled. No report was written.", files=len(files))
     if not files:
