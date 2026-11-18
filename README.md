@@ -4,6 +4,9 @@ Scan a library of movie and TV rips and export the details MediaInfo reports (vi
 
 Video Metadata Reporter uses the [MediaInfo](https://mediaarea.net/en/MediaInfo) library but is an independent project, not affiliated with or endorsed by MediaArea.net SARL. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+[![Release](https://img.shields.io/github/v/release/cybergrimes/Video-Metadata-Reporter?include_prereleases)](https://github.com/cybergrimes/Video-Metadata-Reporter/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/cybergrimes/Video-Metadata-Reporter/ci.yml?branch=main&label=CI)](https://github.com/cybergrimes/Video-Metadata-Reporter/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/github/license/cybergrimes/Video-Metadata-Reporter)](LICENSE)
 ![platform: Windows](https://img.shields.io/badge/platform-Windows-blue)
 
 ![Video Metadata Reporter window](docs/screenshot.png)
