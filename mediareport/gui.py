@@ -79,10 +79,12 @@ class App:
         sb = ttk.Scrollbar(ff, orient="vertical", command=self.folder_list.yview)
         sb.grid(row=0, column=1, rowspan=3, sticky="ns")
         self.folder_list.configure(yscrollcommand=sb.set)
-        self.btn_add = ttk.Button(ff, text="Add...", command=self.add_folder)
+        self.btn_add = ttk.Button(ff, text="Add", command=self.add_folder)
         self.btn_add.grid(row=0, column=2, sticky="ew", padx=(PAD, 0))
         self.btn_remove = ttk.Button(ff, text="Remove", command=self.remove_folders)
         self.btn_remove.grid(row=1, column=2, sticky="ew", padx=(PAD, 0), pady=(4, 0))
+        self.btn_clear = ttk.Button(ff, text="Clear", command=self.clear_folders)
+        self.btn_clear.grid(row=2, column=2, sticky="ew", padx=(PAD, 0), pady=(4, 0))
         self.folder_list.bind("<Delete>", lambda e: self.remove_folders())
 
         # Options
@@ -222,6 +224,12 @@ class App:
             self.folder_list.delete(i)
         if sel:
             self._save_settings()
+
+    def clear_folders(self) -> None:
+        if self.worker or not self.folder_list.size():
+            return
+        self.folder_list.delete(0, "end")
+        self._save_settings()
 
     def browse_export(self) -> None:
         d = filedialog.askdirectory(parent=self.root, title="Save reports to")
@@ -378,7 +386,7 @@ class App:
 
     def _set_running(self, running: bool) -> None:
         on, off = (["disabled"], ["!disabled"]) if running else (["!disabled"], ["disabled"])
-        for w in (self.btn_start, self.btn_add, self.btn_remove, self.btn_browse,
+        for w in (self.btn_start, self.btn_add, self.btn_remove, self.btn_clear, self.btn_browse,
                   self.ent_export, self.ent_extras, self.chk_split, *self.spinboxes):
             w.state(on)
         self.btn_cancel.state(off)
