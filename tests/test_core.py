@@ -291,3 +291,22 @@ class TestRecord(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCleanWritingApp(unittest.TestCase):
+    def test_keeps_name_and_version_only(self):
+        cases = {
+            "mkvmerge v51.0.0 ('I Wish') 64-bit": "mkvmerge 51.0.0",
+            "mkvmerge v97.0 ('You Don't Have A Clue') 64-bit": "mkvmerge 97.0",
+            "MakeMKV v1.18.3 win(x64-release)": "MakeMKV 1.18.3",
+            "MakeMKV v2.0.0 win(x64-release)": "MakeMKV 2.0.0",
+            "HandBrake 1.6.1 2023010900": "HandBrake 1.6.1",
+            "mkvmerge v60": "mkvmerge 60",
+        }
+        for raw, want in cases.items():
+            self.assertEqual(core.clean_writing_app(raw), want, raw)
+
+    def test_unparseable_left_alone(self):
+        self.assertEqual(core.clean_writing_app("Lavf58.76.100"), "Lavf58.76.100")
+        self.assertEqual(core.clean_writing_app("  Some Tool  "), "Some Tool")
+        self.assertEqual(core.clean_writing_app(None), "")

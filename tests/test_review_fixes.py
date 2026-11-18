@@ -72,10 +72,10 @@ class TestNewColumnsAndSelection(unittest.TestCase):
                  writing_application="mkvmerge v60", writing_library="libebml v1.4.2")
         r = core.record_from_tracks(Path("D:/L/a.mkv"), [gen])
         self.assertEqual((r.encoded_date, r.writing_app, r.writing_lib),
-                         ("2021-03-14", "mkvmerge v60", "libebml v1.4.2"))
+                         ("2021-03-14", "mkvmerge 60", "libebml v1.4.2"))
         self.assertEqual(core.date_only("UTC 2019-12-01 23:59:59"), "2019-12-01")
         self.assertEqual(core.date_only(None), "")
-        self.assertEqual(r.base_values()[BASE_COLUMNS.index("Writing application")], "mkvmerge v60")
+        self.assertEqual(r.base_values()[BASE_COLUMNS.index("Writing application")], "mkvmerge 60")
         blank = core.record_from_tracks(Path("D:/L/a.mkv"), [NS(track_type="General")])
         self.assertEqual((blank.encoded_date, blank.writing_app, blank.writing_lib), ("", "", ""))
 

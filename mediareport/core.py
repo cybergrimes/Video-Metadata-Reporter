@@ -142,6 +142,19 @@ def content_type(path: Path, extras_folders: Iterable[str] = DEFAULT_EXTRAS_FOLD
 
 # --------------------------------------------------------------------------- track helpers
 
+_APP_VERSION = re.compile(r"^(.+?)\s+v?(\d+(?:\.\d+)*)(?=\s|$)")
+
+
+def clean_writing_app(text) -> str:
+    """'mkvmerge v97.0 ('Name') 64-bit' -> 'mkvmerge 97.0'; 'MakeMKV v1.18.3 win(x64-release)' -> 'MakeMKV 1.18.3'.
+
+    Keeps just the application name and version number; anything it can't parse is left as is.
+    """
+    text = (text or "").strip()
+    m = _APP_VERSION.match(text)
+    return f"{m.group(1)} {m.group(2)}" if m else text
+
+
 def g(track, attr):
     """Safe attribute getter."""
     return getattr(track, attr, None) if track is not None else None
@@ -377,7 +390,7 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
         category=content_type(path, extras_folders, root),
         container=g(gen, "format"),
         encoded_date=date_only(g(gen, "encoded_date")),
-        writing_app=g(gen, "writing_application") or "",
+        writing_app=clean_writing_app(g(gen, "writing_application")),
         writing_lib=g(gen, "writing_library") or "",
         size_gb=size_gb,
         duration_min=mins,
