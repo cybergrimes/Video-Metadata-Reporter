@@ -1,0 +1,26 @@
+# Claude / working notes (kept local, never published)
+CLAUDE.md
+HANDOFF.md
+.claude/
+
+# Reports and user settings
+export/
+*.xlsx
+~$*
+MediaReport.ini
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build output (PyInstaller)
+build/
+dist/
+*.spec.bak
+
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
