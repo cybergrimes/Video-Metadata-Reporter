@@ -467,6 +467,17 @@ class TestResolveMediaInfo(unittest.TestCase):
             core.scan_file(Path("D:/L/a.mkv"))
         self.assertEqual(parse.call_args.kwargs["library_file"], "C:/x/MediaInfo.dll")
 
+    def test_probe_error_keeps_the_reason_but_not_pymediainfos_repeated_path(self):
+        path = "C:/x/MediaInfo.dll"
+        err = OSError(f"Failed to load library from {path} - [WinError 193] not a valid Win32 application")
+        with self._mock.patch("pymediainfo.MediaInfo._get_library", side_effect=err),                 self._mock.patch("pymediainfo.MediaInfo.can_parse", return_value=False):
+            version, error = core._probe_mediainfo(path)
+        self.assertEqual((version, error), ("", "[WinError 193] not a valid Win32 application"))
+
+    def test_probe_error_other_messages_left_alone(self):
+        with self._mock.patch("pymediainfo.MediaInfo._get_library", side_effect=RuntimeError("odd")),                 self._mock.patch("pymediainfo.MediaInfo.can_parse", return_value=False):
+            self.assertEqual(core._probe_mediainfo("C:/x/M.dll"), ("", "odd"))
+
     def test_real_vendored_dll_loads_and_matches_version_file(self):
         """The committed DLL is the version vendor/mediainfo/VERSION says (no mocks, no media files)."""
         c = core.resolve_mediainfo(refresh=True)
