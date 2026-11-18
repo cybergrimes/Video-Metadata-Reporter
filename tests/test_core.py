@@ -402,12 +402,10 @@ class TestResolveMediaInfo(unittest.TestCase):
         c = self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("26.10", ""))
         self.assertEqual((c.library, c.version), (str(Path("v/MediaInfo.dll")), "26.10"))
 
-    def test_load_failure_raises_with_reason(self):
+    def test_load_failure_raises_without_the_windows_error_text(self):
         with self.assertRaises(core.MediaInfoUnavailable) as cm:
             self.resolve(Path("v/MediaInfo.dll"), lambda lib: ("", "bad image"))
-        msg = str(cm.exception)
-        for part in ("MediaInfo 26.10", "couldn't be loaded", "bad image", str(Path("v/MediaInfo.dll"))):
-            self.assertIn(part, msg)
+        self.assertEqual(str(cm.exception), f"MediaInfo 26.10 couldn't be loaded from {Path('v/MediaInfo.dll')}.")
 
     def test_no_fallback_probe_of_the_bundled_library(self):
         calls = []
@@ -466,17 +464,6 @@ class TestResolveMediaInfo(unittest.TestCase):
         with self._mock.patch("pymediainfo.MediaInfo.parse", return_value=NS(tracks=[])) as parse:
             core.scan_file(Path("D:/L/a.mkv"))
         self.assertEqual(parse.call_args.kwargs["library_file"], "C:/x/MediaInfo.dll")
-
-    def test_probe_error_keeps_the_reason_but_not_pymediainfos_repeated_path(self):
-        path = "C:/x/MediaInfo.dll"
-        err = OSError(f"Failed to load library from {path} - [WinError 193] not a valid Win32 application")
-        with self._mock.patch("pymediainfo.MediaInfo._get_library", side_effect=err),                 self._mock.patch("pymediainfo.MediaInfo.can_parse", return_value=False):
-            version, error = core._probe_mediainfo(path)
-        self.assertEqual((version, error), ("", "[WinError 193] not a valid Win32 application"))
-
-    def test_probe_error_other_messages_left_alone(self):
-        with self._mock.patch("pymediainfo.MediaInfo._get_library", side_effect=RuntimeError("odd")),                 self._mock.patch("pymediainfo.MediaInfo.can_parse", return_value=False):
-            self.assertEqual(core._probe_mediainfo("C:/x/M.dll"), ("", "odd"))
 
     def test_real_vendored_dll_loads_and_matches_version_file(self):
         """The committed DLL is the version vendor/mediainfo/VERSION says (no mocks, no media files)."""

@@ -432,10 +432,6 @@ def _probe_mediainfo(library_file: str | None) -> tuple[str, str]:
         lib.MediaInfo_Delete(handle)
     except Exception as e:  # noqa: BLE001 - any failure means "couldn't load"
         error = str(e) or type(e).__name__
-        # pymediainfo repeats the path in its message; we show the path ourselves, so keep just the reason.
-        prefix = f"Failed to load library from {library_file} - "
-        if error.startswith(prefix):
-            error = error[len(prefix):]
     if error and MediaInfo.can_parse(library_file=library_file):
         error = ""   # the private call changed but the library itself works
     return version, error
@@ -472,7 +468,7 @@ def resolve_mediainfo(refresh: bool = False) -> MediaInfoChoice:
                     f"{name} isn't available: {paths.vendored_mediainfo_dir() / 'MediaInfo.dll'} is missing.")
             version, error = _probe_mediainfo(str(dll))
             if error:
-                raise MediaInfoUnavailable(f"{name} couldn't be loaded from {dll}: {error}")
+                raise MediaInfoUnavailable(f"{name} couldn't be loaded from {dll}.")
             if expected and version and version != expected:
                 raise MediaInfoUnavailable(f"Expected {name} but {dll} is MediaInfo {version}.")
             _choice = MediaInfoChoice(str(dll), version)
