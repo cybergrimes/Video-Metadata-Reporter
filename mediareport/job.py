@@ -97,7 +97,8 @@ def run_job(
     path = unique_path(export_dir / opts.report_name(now))
     try:
         out = write_workbook(result.records, result.errors, path,
-                             ExcelOptions(max_audio=opts.max_audio, max_subs=opts.max_subs))
+                             ExcelOptions(max_audio=opts.max_audio, max_subs=opts.max_subs,
+                                         split_tracks=opts.split_tracks))
     except OSError as e:
         return finish(FAILED, f"Couldn't save the report to {path}: {e}", files=len(files),
                       records=len(result.records), errors=len(result.errors))

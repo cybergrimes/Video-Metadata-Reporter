@@ -24,6 +24,7 @@ class Options:
     export_folder: str = ""          # "" = 'export' next to the app; relative = relative to the app
     max_audio: int = 0
     max_subs: int = 0
+    split_tracks: bool = False
     extras_folders: list[str] = field(default_factory=lambda: list(DEFAULT_EXTRAS_FOLDERS))
     workers: int = 4
 
@@ -73,6 +74,10 @@ def load(path: Path | None = None) -> Options:
     opts.export_folder = s.get("export_folder", opts.export_folder).strip()
     opts.max_audio = _int(cp, "max_audio", opts.max_audio)
     opts.max_subs = _int(cp, "max_subs", opts.max_subs)
+    try:
+        opts.split_tracks = cp.getboolean(SECTION, "split_tracks", fallback=opts.split_tracks)
+    except ValueError:
+        pass
     opts.workers = _int(cp, "workers", opts.workers, minimum=1)
     if "extras_folders" in s:
         opts.extras_folders = [e.strip() for e in s["extras_folders"].split(",") if e.strip()]
@@ -97,6 +102,10 @@ export_folder = {export_folder}
 max_audio = {max_audio}
 max_subs = {max_subs}
 
+; Put each audio/subtitle detail in its own column (Audio 1 Language, Audio 1 Type, ...)
+; instead of one combined cell per track. yes or no.
+split_tracks = {split_tracks}
+
 ; Folder names (comma-separated, any case) that mark bonus content in the Type column.
 extras_folders = {extras_folders}
 
@@ -113,6 +122,7 @@ def render(opts: Options) -> str:
         export_folder=opts.export_folder,
         max_audio=max(0, opts.max_audio),
         max_subs=max(0, opts.max_subs),
+        split_tracks="yes" if opts.split_tracks else "no",
         extras_folders=", ".join(opts.extras_folders),
         workers=max(1, opts.workers),
     )

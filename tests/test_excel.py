@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mediareport import excel
+from mediareport import core, excel
 from mediareport.core import BASE_COLUMNS, FileRecord, ScanError
 
 
@@ -65,6 +65,42 @@ class TestWorkbook(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = excel.write_workbook([rec("a", 1, 1)], [], Path(d) / "new" / "r.xlsx")
             self.assertTrue(p.exists())
+
+
+class TestSplitTracks(unittest.TestCase):
+    def build(self, **kw):
+        r = FileRecord(folder="D:/x", file="a.mkv",
+                       audio=["mixed a1", "mixed a2"], subs=["mixed s1"],
+                       audio_split=[["English", "AC-3", "5.1", "640 kb/s", "Main", "Default"],
+                                    ["French", "AAC", "2.0", "128 kb/s", "", ""]],
+                       subs_split=[["English", "PGS", "SDH", "", "Default"]])
+        r2 = FileRecord(folder="D:/x", file="b.mkv", audio=["m"], audio_split=[["de", "AC-3", "", "", "", ""]])
+        return excel.build_workbook([r, r2], [], excel.ExcelOptions(split_tracks=True, **kw))["Library"]
+
+    def test_headers_grouped_by_track(self):
+        r = rows(self.build())
+        n = len(BASE_COLUMNS)
+        expect = ([f"Audio {i} {f}" for i in (1, 2) for f in core.AUDIO_FIELDS]
+                  + [f"Sub 1 {f}" for f in core.SUB_FIELDS])
+        self.assertEqual(r[0][n:], expect)
+
+    def test_values_and_padding(self):
+        r = rows(self.build())
+        n = len(BASE_COLUMNS)
+        self.assertEqual(r[1][n:n + 6], ["English", "AC-3", "5.1", "640 kb/s", "Main", "Default"])
+        self.assertEqual(r[1][-5:], ["English", "PGS", "SDH", "", "Default"])
+        self.assertEqual(r[2][n + 6:n + 12], [""] * 6)       # file b has no 2nd audio
+        self.assertEqual(r[2][-5:], [""] * 5)
+
+    def test_caps_and_counts(self):
+        ws = self.build(max_audio=1, max_subs=0)
+        r = rows(ws)
+        self.assertEqual(len(r[0]), len(BASE_COLUMNS) + 6 + 5)
+        self.assertEqual(r[1][BASE_COLUMNS.index("# Audio")], 2)
+
+    def test_off_by_default(self):
+        ws = excel.build_workbook([FileRecord(folder="D:/x", file="a", audio=["m"])], [])["Library"]
+        self.assertEqual(rows(ws)[0][-1], "Audio 1")
 
 
 class TestAutofit(unittest.TestCase):

@@ -21,6 +21,11 @@ BASE_COLUMNS = [
     "Video Bitrate", "# Audio", "# Subs",
 ]
 
+# Per-track columns used when tracks are split into separate fields
+# ("Audio 1 Language", "Audio 1 Type", ...). Order matters.
+AUDIO_FIELDS = ["Language", "Type", "Channels", "Bitrate", "Name", "Default"]
+SUB_FIELDS = ["Language", "Type", "Name", "Forced", "Default"]
+
 
 @dataclass
 class FileRecord:
@@ -39,6 +44,9 @@ class FileRecord:
     video_bitrate: str = ""
     audio: list[str] = field(default_factory=list)
     subs: list[str] = field(default_factory=list)
+    # Same tracks as audio/subs, one value per AUDIO_FIELDS / SUB_FIELDS entry.
+    audio_split: list[list[str]] = field(default_factory=list)
+    subs_split: list[list[str]] = field(default_factory=list)
 
     def base_values(self) -> list:
         """Values for BASE_COLUMNS, in order."""
@@ -112,7 +120,7 @@ def channels(track) -> str:
 
 def kbps(value) -> str:
     try:
-        return f"{round(int(float(str(value).split()[0])) / 1000)} kb/s"
+        return f"{round(int(float(str(value).split()[0])) / 1000):,} kb/s"
     except (TypeError, ValueError):
         return ""
 
@@ -121,31 +129,52 @@ def yes(v) -> bool:
     return str(v).lower() in ("yes", "true", "1")
 
 
+def audio_fields(t) -> list[str]:
+    """One value per AUDIO_FIELDS entry."""
+    return [
+        lang(t),
+        g(t, "commercial_name") or g(t, "format") or "?",
+        channels(t),
+        kbps(g(t, "bit_rate")),
+        g(t, "title") or "",
+        "Default" if yes(g(t, "default")) else "",
+    ]
+
+
 def describe_audio(t) -> str:
-    codec = g(t, "commercial_name") or g(t, "format") or "?"
-    parts = [lang(t), codec, channels(t), kbps(g(t, "bit_rate"))]
-    title = g(t, "title")
+    lang_, codec, ch, rate, title, default = audio_fields(t)
+    parts = [lang_, codec, ch, rate]
     if title:
         parts.append(f'"{title}"')
-    if yes(g(t, "default")):
-        parts.append("Default")
+    if default:
+        parts.append(default)
     return " | ".join(p for p in parts if p)
 
 
 SUB_FORMATS = {"PGS": "PGS", "UTF-8": "SRT", "VobSub": "VobSub", "ASS": "ASS"}
 
 
-def describe_sub(t) -> str:
+def sub_fields(t) -> list[str]:
+    """One value per SUB_FIELDS entry."""
     fmt = g(t, "format") or "?"
-    fmt = SUB_FORMATS.get(fmt, fmt)
-    parts = [lang(t), fmt]
-    title = g(t, "title")
+    return [
+        lang(t),
+        SUB_FORMATS.get(fmt, fmt),
+        g(t, "title") or "",
+        "Forced" if yes(g(t, "forced")) else "",
+        "Default" if yes(g(t, "default")) else "",
+    ]
+
+
+def describe_sub(t) -> str:
+    lang_, fmt, title, forced, default = sub_fields(t)
+    parts = [lang_, fmt]
     if title:
         parts.append(f'"{title}"')
-    if yes(g(t, "forced")):
-        parts.append("Forced")
-    if yes(g(t, "default")):
-        parts.append("Default")
+    if forced:
+        parts.append(forced)
+    if default:
+        parts.append(default)
     return " | ".join(p for p in parts if p)
 
 
@@ -200,6 +229,8 @@ def record_from_tracks(path: Path, tracks, extras_folders: Iterable[str] = DEFAU
         video_bitrate=kbps(g(v, "bit_rate")) or kbps(g(gen, "overall_bit_rate")),
         audio=[describe_audio(a) for a in auds],
         subs=[describe_sub(s) for s in subs],
+        audio_split=[audio_fields(a) for a in auds],
+        subs_split=[sub_fields(s) for s in subs],
     )
 
 

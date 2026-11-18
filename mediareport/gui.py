@@ -125,6 +125,13 @@ class App:
         ttk.Label(of, text="Comma-separated. Files under these folders get that Type instead of 'Main'.",
                   foreground="gray").grid(row=5, column=1, columnspan=3, sticky="w", padx=(PAD, 0))
 
+        self.var_split = tk.BooleanVar()
+        self.chk_split = ttk.Checkbutton(
+            of, text="Separate columns for each audio/subtitle detail "
+                     "(Audio 1 Language, Audio 1 Type, Audio 1 Channels, ...)",
+            variable=self.var_split)
+        self.chk_split.grid(row=6, column=0, columnspan=4, sticky="w", pady=(PAD, 0))
+
         # Run controls
         rf = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
         rf.grid(row=2, column=0, sticky="ew")
@@ -161,6 +168,7 @@ class App:
         self.var_audio.set(str(o.max_audio))
         self.var_subs.set(str(o.max_subs))
         self.var_workers.set(str(o.workers))
+        self.var_split.set(o.split_tracks)
         self.var_extras.set(", ".join(o.extras_folders))
 
     @staticmethod
@@ -180,6 +188,7 @@ class App:
             export_folder=self.var_export.get().strip(),
             max_audio=self._int(self.var_audio, min(o.max_audio, MAX_TRACK_COLS), 0, MAX_TRACK_COLS),
             max_subs=self._int(self.var_subs, min(o.max_subs, MAX_TRACK_COLS), 0, MAX_TRACK_COLS),
+            split_tracks=bool(self.var_split.get()),
             extras_folders=[e.strip() for e in self.var_extras.get().split(",") if e.strip()],
             workers=self._int(self.var_workers, min(o.workers, MAX_WORKERS), 1, MAX_WORKERS),
         )
@@ -370,7 +379,7 @@ class App:
     def _set_running(self, running: bool) -> None:
         on, off = (["disabled"], ["!disabled"]) if running else (["!disabled"], ["disabled"])
         for w in (self.btn_start, self.btn_add, self.btn_remove, self.btn_browse,
-                  self.ent_export, self.ent_extras, *self.spinboxes):
+                  self.ent_export, self.ent_extras, self.chk_split, *self.spinboxes):
             w.state(on)
         self.btn_cancel.state(off)
         self.folder_list.configure(state="disabled" if running else "normal")

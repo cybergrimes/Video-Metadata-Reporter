@@ -25,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="Output .xlsx (default: export\\media_report_<date>.xlsx next to this script)")
     ap.add_argument("--max-audio", type=int, default=0, help="Cap Audio columns (0 = as many as needed)")
     ap.add_argument("--max-subs", type=int, default=0, help="Cap Sub columns (0 = as many as needed)")
+    ap.add_argument("--split-tracks", action="store_true",
+                    help="Put each audio/sub detail in its own column (Audio 1 Language, Audio 1 Type, ...)")
     ap.add_argument("--workers", type=int, default=4, help="Files to read in parallel (default 4)")
     ap.add_argument("--extras", default=",".join(DEFAULT_EXTRAS_FOLDERS),
                     help="Comma-separated folder names that mark bonus content (default: %(default)s)")
@@ -57,7 +59,8 @@ def main(argv: list[str] | None = None) -> int:
             print(note)
         output = export_dir / f"media_report_{stamp}.xlsx"
     out = write_workbook(result.records, result.errors, output,
-                         ExcelOptions(max_audio=args.max_audio, max_subs=args.max_subs))
+                         ExcelOptions(max_audio=args.max_audio, max_subs=args.max_subs,
+                                    split_tracks=args.split_tracks))
     n_err = len(result.errors)
     print(f"\nDone: {len(result.records)} files -> {out}"
           + (f" ({n_err} errors, see 'Errors' sheet)" if n_err else ""))

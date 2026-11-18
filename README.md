@@ -21,7 +21,7 @@ One workbook per scan with a **Library** sheet (one row per video file) and, if 
 
 Columns: `Folder, File, Type, Container, Size (GB), Duration (min), Video Codec, Resolution, Aspect, Frame Rate, Bit Depth, HDR, Video Bitrate, # Audio, # Subs`, followed by `Audio 1..N` and `Sub 1..N`.
 
-- Audio cell: `English | Dolby TrueHD with Dolby Atmos | 7.1 | 4000 kb/s | "Title" | Default`
+- Audio cell: `English | Dolby TrueHD with Dolby Atmos | 7.1 | 4,000 kb/s | "Title" | Default`
 - Subtitle cell: `English | PGS | "Title" | Forced | Default`
 - **Type** is `Main`, or `Extras` / `Featurettes` / `Scenes` when a parent folder has that name (editable in the app).
 - **HDR** is one of `Dolby Vision [+ HDR10]`, `HDR10+`, `HDR10`, `HLG`, `SDR`.
@@ -34,6 +34,7 @@ Columns: `Folder, File, Type, Container, Size (GB), Duration (min), Video Codec,
 |---|---|
 | Save reports to | Where reports go. Default is an `export` folder next to the app. If that isn't writable, reports go to `Documents\Media Report` and the log says so. |
 | Max audio / subtitle columns | Cap the number of `Audio N` / `Sub N` columns. `0` means no cap. The `# Audio` / `# Subs` columns always show the true count. |
+| Separate columns | Off: one combined cell per track. On: each detail gets its own column, grouped by track. Audio N: Language, Type (codec), Channels, Bitrate, Name, Default. Sub N: Language, Type (format), Name, Forced, Default. Also `split_tracks` in the ini and `--split-tracks` on the command line. |
 | Files at once | How many files are scanned in parallel. |
 | Extras folder names | Comma-separated folder names treated as non-main content. |
 

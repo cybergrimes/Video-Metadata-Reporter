@@ -7,6 +7,17 @@ from mediareport import settings
 from mediareport.core import DEFAULT_EXTRAS_FOLDERS
 
 
+class TestSplitSetting(unittest.TestCase):
+    def test_roundtrip_and_bad_value(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "m.ini"
+            self.assertFalse(settings.load(p).split_tracks)
+            settings.save(settings.Options(split_tracks=True), p)
+            self.assertTrue(settings.load(p).split_tracks)
+            p.write_text("[Media Report]\nsplit_tracks = banana\n", encoding="utf-8")
+            self.assertFalse(settings.load(p).split_tracks)
+
+
 class TestSettings(unittest.TestCase):
     def setUp(self):
         self._td = tempfile.TemporaryDirectory()

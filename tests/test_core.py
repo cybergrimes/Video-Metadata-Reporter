@@ -22,7 +22,7 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(core.kbps("640000"), "640 kb/s")
         self.assertEqual(core.kbps(None), "")
         self.assertEqual(core.kbps("abc"), "")
-        self.assertEqual(core.kbps(4000000), "4000 kb/s")
+        self.assertEqual(core.kbps(4000000), "4,000 kb/s")
 
     def test_lang(self):
         self.assertEqual(core.lang(NS(other_language=["English", "en"], language="en")), "English")
@@ -43,10 +43,26 @@ class TestHelpers(unittest.TestCase):
                channel_s=8, channel_layout="L R C LFE Ls Rs Lb Rb", bit_rate="4000000",
                title="Main", default="Yes")
         self.assertEqual(core.describe_audio(t),
-                         'English | Dolby TrueHD with Dolby Atmos | 7.1 | 4000 kb/s | "Main" | Default')
+                         'English | Dolby TrueHD with Dolby Atmos | 7.1 | 4,000 kb/s | "Main" | Default')
         t2 = NS(language="de", format="AC-3", channel_s=6, bit_rate="640000", default="No")
         self.assertEqual(core.describe_audio(t2), "de | AC-3 | 5.1 | 640 kb/s")
         self.assertEqual(core.describe_audio(NS()), "und | ?")
+
+    def test_kbps_thousands_separator(self):
+        self.assertEqual(core.kbps("1234567"), "1,235 kb/s")
+        self.assertEqual(core.kbps("999000"), "999 kb/s")
+
+    def test_audio_fields(self):
+        t = NS(other_language=["English"], commercial_name="DTS-HD MA", channel_s=8,
+               channel_layout="L R C LFE Ls Rs Lb Rb", bit_rate="4000000", title="Main", default="Yes")
+        self.assertEqual(core.audio_fields(t), ["English", "DTS-HD MA", "7.1", "4,000 kb/s", "Main", "Default"])
+        self.assertEqual(len(core.audio_fields(NS())), len(core.AUDIO_FIELDS))
+        self.assertEqual(core.audio_fields(NS(language="de", format="AC-3", default="No"))[5], "")
+
+    def test_sub_fields(self):
+        t = NS(language="fr", format="UTF-8", title="Forced", forced="Yes", default="No")
+        self.assertEqual(core.sub_fields(t), ["fr", "SRT", "Forced", "Forced", ""])
+        self.assertEqual(len(core.sub_fields(NS())), len(core.SUB_FIELDS))
 
     def test_describe_sub(self):
         t = NS(other_language=["English"], format="PGS", title="SDH", forced="Yes", default="Yes")
@@ -140,7 +156,7 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(r.frame_rate, "23.976")
         self.assertEqual(r.bit_depth, 10)
         self.assertEqual(r.hdr, "Dolby Vision + HDR10")
-        self.assertEqual(r.video_bitrate, "50000 kb/s")
+        self.assertEqual(r.video_bitrate, "50,000 kb/s")
         self.assertEqual(r.audio, ["en | AC-3 | 5.1 | 640 kb/s", "fr | AAC | 2.0"])
         self.assertEqual(r.subs, ["en | SRT"])
         vals = r.base_values()
@@ -154,7 +170,7 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(r.video_codec, "")
         self.assertEqual(r.resolution, "")
         self.assertEqual(r.hdr, "")
-        self.assertEqual(r.video_bitrate, "1000 kb/s")  # falls back to overall bitrate
+        self.assertEqual(r.video_bitrate, "1,000 kb/s")  # falls back to overall bitrate
         self.assertIsNone(r.aspect)
         self.assertEqual(len(r.audio), 1)
 
