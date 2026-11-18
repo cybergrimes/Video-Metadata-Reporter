@@ -15,8 +15,6 @@ from .core import DEFAULT_EXTRAS_FOLDERS, normalize_hidden_columns, parse_extras
 from .paths import app_dir, is_writable_dir, resolve_export_dir, user_config_dir
 
 INI_NAME = "settings.ini"
-LEGACY_INI_NAMES = ("VideoMetadataReporter.ini", "MediaReport.ini")   # earlier names, read if settings.ini is missing
-LEGACY_SECTION = "Media Report"
 SECTION = "Video Metadata Reporter"
 MAX_WORKERS = 32
 
@@ -64,22 +62,11 @@ def load(path: Path | None = None) -> Options:
     """Load settings; a missing/unreadable file or bad values fall back to defaults."""
     path = path or settings_path()
     opts = Options()
-    if not path.exists() and path.name == INI_NAME:
-        legacy_dirs = [path.parent, path.parent.with_name("MediaReport")]   # app folder, or old per-user folder
-        for folder in legacy_dirs:                 # settings saved under an earlier name
-            found = next((folder / n for n in LEGACY_INI_NAMES if (folder / n).exists()), None)
-            if found:
-                path = found
-                break
     cp = configparser.ConfigParser(interpolation=None)
     try:
         cp.read(path, encoding="utf-8")
     except (OSError, configparser.Error, UnicodeDecodeError):
         return opts
-    if not cp.has_section(SECTION) and cp.has_section(LEGACY_SECTION):
-        cp.add_section(SECTION)
-        for key, value in cp.items(LEGACY_SECTION):
-            cp.set(SECTION, key, value)
     if not cp.has_section(SECTION):
         return opts
 

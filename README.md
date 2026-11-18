@@ -46,7 +46,7 @@ Columns: `Folder, File, Category, Container, Encoded date, Writing application, 
 
 ## Settings
 
-Settings are saved to `settings.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A settings file from an earlier version (`VideoMetadataReporter.ini` or `MediaReport.ini`) is read if `settings.ini` doesn't exist yet. A `settings.ini` from an earlier version is read once if the new file does not exist yet.
+Settings are saved to `settings.ini` next to the app (or in `%APPDATA%\VideoMetadataReporter` if that folder isn't writable). It's plain text and safe to edit by hand while the app is closed. Delete it to reset everything. A `settings.ini` from an earlier version is read once if the new file does not exist yet.
 
 If the app fails to start, the error is shown in a dialog and saved to `startup-error.log` in `%APPDATA%\VideoMetadataReporter`.
 

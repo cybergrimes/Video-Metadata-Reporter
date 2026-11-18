@@ -25,22 +25,6 @@ class TestSettings(unittest.TestCase):
         self.dir = Path(self._td.name)
         self.ini = self.dir / "settings.ini"
 
-    def test_loads_pre_rename_settings(self):
-        old = self.dir / "MediaReport.ini"
-        old.write_text("[Media Report]\nmax_audio = 2\nfolders =\n    D:\\Movies\n", encoding="utf-8")
-        o = settings.load(self.ini)            # new file missing -> falls back to the old one
-        self.assertEqual((o.max_audio, o.folders), (2, ["D:\\Movies"]))
-        settings.save(o, self.ini)             # saving writes the new name and section
-        self.assertIn("[Video Metadata Reporter]", self.ini.read_text(encoding="utf-8"))
-
-    def test_loads_from_old_config_folder(self):
-        old_dir = self.dir / "MediaReport"
-        old_dir.mkdir()
-        (old_dir / "MediaReport.ini").write_text("[Media Report]\nmax_subs = 4\n", encoding="utf-8")
-        new_dir = self.dir / "VideoMetadataReporter"
-        new_dir.mkdir()
-        self.assertEqual(settings.load(new_dir / "settings.ini").max_subs, 4)
-
     def test_round_trip(self):
         o = settings.Options(folders=[r"D:\Movies", r"E:\TV Shows"], export_folder=r"D:\Out",
                              max_audio=3, max_subs=6, extras_folders=["extras", "bonus"], workers=8)

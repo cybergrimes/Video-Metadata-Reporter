@@ -8,8 +8,6 @@ export/
 *.xlsx
 ~$*
 settings.ini
-MediaReport.ini
-VideoMetadataReporter.ini
 
 # Python
 __pycache__/
