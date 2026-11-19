@@ -60,6 +60,19 @@ class TestVendoredMediaInfo(unittest.TestCase):
                     mock.patch.object(paths.sys, "platform", "win32"):
                 self.assertEqual(paths.vendored_mediainfo(), dll)
 
+    def test_frozen_build_uses_meipass(self):
+        # The built exe looks inside PyInstaller's _internal folder (sys._MEIPASS), not next to the exe.
+        with tempfile.TemporaryDirectory() as meipass, tempfile.TemporaryDirectory() as exe_dir:
+            dll = Path(meipass) / "vendor" / "mediainfo" / "MediaInfo.dll"
+            dll.parent.mkdir(parents=True)
+            dll.write_bytes(b"")
+            with mock.patch.object(paths, "app_dir", return_value=Path(exe_dir)), \
+                    mock.patch.object(paths.sys, "platform", "win32"), \
+                    mock.patch.object(paths.sys, "frozen", True, create=True), \
+                    mock.patch.object(paths.sys, "_MEIPASS", meipass, create=True):
+                self.assertEqual(paths.vendored_mediainfo_dir(), dll.parent)
+                self.assertEqual(paths.vendored_mediainfo(), dll)
+
     def test_missing_gives_none(self):
         with tempfile.TemporaryDirectory() as d:
             with mock.patch.object(paths, "app_dir", return_value=Path(d)), \
