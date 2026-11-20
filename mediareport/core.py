@@ -345,7 +345,11 @@ def hdr(v) -> str:
     fmt = g(v, "hdr_format") or ""
     compat = g(v, "hdr_format_compatibility") or ""
     if "Dolby Vision" in fmt:
-        return "Dolby Vision" + (" + HDR10" if "HDR10" in compat else "")
+        if "2094" in fmt or "HDR10+" in fmt + compat:
+            return "Dolby Vision / HDR10+"
+        if "HDR10" in compat:
+            return "Dolby Vision / HDR10"
+        return "Dolby Vision"
     if "2094" in fmt or "HDR10+" in compat:
         return "HDR10+"
     if fmt or "HDR10" in compat:

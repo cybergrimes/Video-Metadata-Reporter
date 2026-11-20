@@ -30,7 +30,7 @@ Columns: `Folder, File, Category, Container, Encoded date, Writing application, 
 - Subtitle cell: `English | PGS | "Title" | Forced | Default`
 - **External subtitles** next to a video (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`/`.idx`, `.sup`) are added after the embedded tracks and count in `# Subs`. They must be named like the video, e.g. `Movie (2020).en.forced.srt`. If two videos share a name prefix (`Movie.mkv` and `Movie.Trailer.mkv`), a subtitle goes to the video with the longest matching name. The language, `forced` and `default` come from the name, other words become the Name, and no language shows `und`. Two-letter codes that are also words (`no`, `it`, `id`, `he`, `hi`) count as a language only in lower case. The cell ends with `External` (or the Format shows `SRT (external)` in separate-column mode). Subtitle files in a separate `Subs` folder are not picked up.
 - **Category** is `Main`, or `Extras` / `Featurettes` / `Scenes` when a folder below the one you scanned has that name (editable in the app).
-- **Dynamic range** is one of `Dolby Vision [+ HDR10]`, `HDR10+`, `HDR10`, `HLG`, `SDR`.
+- **Dynamic range** is one of `Dolby Vision`, `Dolby Vision / HDR10`, `Dolby Vision / HDR10+`, `HDR10+`, `HDR10`, `HLG`, `SDR`.
 - The header row is bold and frozen, filters are on, and columns are auto-sized to fit their longest value.
 - Files scanned: mkv, mp4, m4v, avi, mov, ts, m2ts, wmv, mpg, mpeg, webm.
 

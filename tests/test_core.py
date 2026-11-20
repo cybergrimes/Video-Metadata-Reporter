@@ -36,7 +36,13 @@ class TestHelpers(unittest.TestCase):
 
     def test_hdr(self):
         self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision")), "Dolby Vision")
-        self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision", hdr_format_compatibility="HDR10")), "Dolby Vision + HDR10")
+        self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision", hdr_format_compatibility="HDR10")), "Dolby Vision / HDR10")
+        f9 = ("Dolby Vision, Version 1.0, Profile 7.6, dvhe.07.06, BL+EL+RPU, no metadata compression, "
+              "Blu-ray compatible / SMPTE ST 2094 App 4, Version HDR10+ Profile B, HDR10+ Profile B compatible")
+        self.assertEqual(core.hdr(NS(hdr_format=f9, hdr_format_compatibility="HDR10+ Profile B compatible")),
+                         "Dolby Vision / HDR10+")
+        self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision", hdr_format_compatibility="HDR10+ Profile B compatible")),
+                         "Dolby Vision / HDR10+")
         self.assertEqual(core.hdr(NS(hdr_format="SMPTE ST 2094 App 4")), "HDR10+")
         self.assertEqual(core.hdr(NS(hdr_format="SMPTE ST 2086", hdr_format_compatibility="HDR10")), "HDR10")
         self.assertEqual(core.hdr(NS(transfer_characteristics="HLG")), "HLG")
@@ -256,7 +262,7 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(r.aspect, "16:9")
         self.assertEqual(r.frame_rate, "23.976")
         self.assertEqual(r.bit_depth, 10)
-        self.assertEqual(r.hdr, "Dolby Vision + HDR10")
+        self.assertEqual(r.hdr, "Dolby Vision / HDR10")
         self.assertEqual(r.video_bitrate, "50,000 kb/s")
         self.assertEqual(r.audio, ["en | AC-3 | 5.1 | 640 kb/s", "fr | AAC | 2.0"])
         self.assertEqual(r.subs, ["en | SRT"])
