@@ -43,6 +43,11 @@ class TestHelpers(unittest.TestCase):
                          "Dolby Vision / HDR10+")
         self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision", hdr_format_compatibility="HDR10+ Profile B compatible")),
                          "Dolby Vision / HDR10+")
+        self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision, Version 1.0, dvhe.08.06 / HDR10+ Profile A")),
+                         "Dolby Vision / HDR10+")
+        self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision", hdr_format_compatibility="HLG")), "Dolby Vision")
+        self.assertEqual(core.hdr(NS(hdr_format="Dolby Vision / SMPTE ST 2094 App 10")), "Dolby Vision")
+        self.assertEqual(core.hdr(NS(hdr_format="HDR10+ Profile B")), "HDR10+")
         self.assertEqual(core.hdr(NS(hdr_format="SMPTE ST 2094 App 4")), "HDR10+")
         self.assertEqual(core.hdr(NS(hdr_format="SMPTE ST 2086", hdr_format_compatibility="HDR10")), "HDR10")
         self.assertEqual(core.hdr(NS(transfer_characteristics="HLG")), "HLG")

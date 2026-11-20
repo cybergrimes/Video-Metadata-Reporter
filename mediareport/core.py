@@ -344,13 +344,15 @@ def sidecar_subs(video: Path, names: "Iterable[str] | FolderListing") -> list[li
 def hdr(v) -> str:
     fmt = g(v, "hdr_format") or ""
     compat = g(v, "hdr_format_compatibility") or ""
+    # ST 2094 App 4 is HDR10+; App 10 is Dolby's own metadata, so match the app number.
+    hdr10plus = "2094 App 4" in fmt or "HDR10+" in fmt or "HDR10+" in compat
     if "Dolby Vision" in fmt:
-        if "2094" in fmt or "HDR10+" in fmt + compat:
+        if hdr10plus:
             return "Dolby Vision / HDR10+"
         if "HDR10" in compat:
             return "Dolby Vision / HDR10"
         return "Dolby Vision"
-    if "2094" in fmt or "HDR10+" in compat:
+    if hdr10plus:
         return "HDR10+"
     if fmt or "HDR10" in compat:
         return "HDR10"
